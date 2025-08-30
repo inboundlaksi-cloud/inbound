@@ -46,11 +46,11 @@ body {
 .event-dot-red { background-color: #ef4444; } /* Issue */
 .event-dot-purple { background-color: #8b5cf6; } /* Scheduled */
 
-/* Role-based visibility classes */
-.admin-only, .supervisor-only, .senior-only, .officer-only, .viewer-only,
-.admin-supervisor-only, .senior-and-up, .delete-permission {
+/* Role-based visibility classes (Legacy, now handled by JS) */
+[data-permission] {
     display: none;
 }
+
 .star-rating .star {
     color: #d1d5db; /* gray-300 */
     cursor: pointer;
@@ -405,37 +405,21 @@ tr:hover {
     color: #8b5cf6;
 }
 
-/* New Styles for Added Features */
-
-/* Comment Section */
-.comment-bubble {
-    padding: 0.5rem 1rem;
-    border-radius: 1rem;
-    max-width: 90%;
-    word-wrap: break-word;
-    background-color: #f3f4f6; /* gray-200 */
-}
-.comment-meta {
-    font-size: 0.75rem;
-    color: #6b7280; /* gray-500 */
-    margin-bottom: 0.25rem;
+/* Custom Scrollbar for Comments */
+#comments-display::-webkit-scrollbar {
+  width: 8px;
 }
 
-/* Issue Resolution Status */
-.status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    display: inline-block;
+#comments-display::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
 }
-.status-pending { background-color: #fef3c7; color: #92400e; } /* amber */
-.status-in-progress { background-color: #dbeafe; color: #1e40af; } /* blue */
-.status-resolved { background-color: #dcfce7; color: #166534; } /* green */
 
-.status-select {
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-    font-size: 0.875rem;
+#comments-display::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+#comments-display::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
 }
