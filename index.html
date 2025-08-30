@@ -199,6 +199,19 @@
                         <span id="user-role-display" class="hidden px-3 py-1 text-xs font-bold text-white bg-fuchsia-500 rounded-full"></span>
                     </div>
                     <div class="flex items-center space-x-4">
+                         <div class="relative">
+                            <button id="notification-bell" class="p-2 rounded-full hover:bg-gray-200 relative">
+                                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                <span id="notification-count" class="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+                            </button>
+                            <div id="notification-panel" class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl p-2 hidden z-50 border">
+                                <div class="p-2 border-b">
+                                    <h4 class="font-semibold text-gray-800">การแจ้งเตือน</h4>
+                                </div>
+                                <div id="notification-list" class="max-h-96 overflow-y-auto">
+                                    </div>
+                            </div>
+                        </div>
                         <button id="profile-button" class="px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">โปรไฟล์</button>
                         <button id="logout-button-main" class="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600">ออกจากระบบ</button>
                     </div>
@@ -249,7 +262,7 @@
                         <svg class="w-16 h-16 text-green-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                         <h3 class="font-semibold">สถิติ</h3>
                     </div>
-                    <div id="go-to-kpi" class="admin-supervisor-only animated-icon p-6 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+                    <div id="go-to-kpi" data-permission="canViewKpi" class="animated-icon p-6 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
                         <svg class="w-16 h-16 text-red-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M12 6V3m0 18v-3M5.636 5.636l-1.414-1.414m15.152 15.152l-1.414-1.414M19.778 5.636l-1.414 1.414m-12.728 12.728l-1.414 1.414" /></svg>
                         <h3 class="font-semibold">KPI พนักงาน</h3>
                     </div>
@@ -395,7 +408,7 @@
             </main>
         </div>
         
-        <div id="kpi-view" class="view admin-supervisor-only">
+        <div id="kpi-view" data-permission="canViewKpi" class="view">
             <header class="bg-white shadow-sm">
                 <div class="container mx-auto px-4 py-4 flex justify-between items-center">
                     <h1 class="font-bold text-xl text-fuchsia-600">KPI พนักงาน</h1>
@@ -408,7 +421,7 @@
             <main class="container mx-auto px-4 py-8">
                 <div id="kpi-summary-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
                 <div id="kpi-details-container" class="mt-8 hidden bg-white rounded-2xl shadow-lg p-8"></div>
-                <div id="user-management-container" class="admin-only mt-12">
+                <div id="user-management-container" data-permission="canManageUsers" class="mt-12">
                     <h2 class="text-2xl font-bold mb-4 text-center">จัดการตำแหน่งผู้ใช้งาน</h2>
                     <div id="user-list-container" class="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-lg"></div>
                 </div>
@@ -544,7 +557,7 @@
                         <button class="back-to-transfers-menu mb-8 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700">กลับ</button>
                         <div class="flex justify-between items-center mb-6">
                             <h2 class="text-3xl font-bold text-gray-900 text-center flex-grow">รายละเอียดข้อมูล TRANFERS</h2>
-                            <button id="plan-work-btn" class="plan-work-btn plan-work-permission">
+                            <button id="plan-work-btn" data-permission="canPlanWork" class="plan-work-btn">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                 </svg>
@@ -585,6 +598,7 @@
                         <hr class="my-6">
                         <div id="check-section">
                             <h3 class="text-xl font-bold text-gray-800 mb-4">ยืนยันการเช็คสินค้า</h3>
+                            <div id="performance-timer-section" class="mb-4"></div>
                             <div id="pallet-buttons-container" class="flex flex-wrap gap-2 mb-6"></div>
                         </div>
                         <hr class="my-6">
@@ -597,6 +611,15 @@
                              <h3 class="text-xl font-bold text-gray-800 mb-4">รายงานปัญหาทั้งหมด</h3>
                             <div id="issue-pallet-buttons-container" class="flex flex-wrap gap-2 mb-6"></div>
                             <div id="issue-forms-container"></div>
+                        </div>
+                        <hr class="my-6">
+                        <div id="comment-section">
+                             <h3 class="text-xl font-bold text-gray-800 mb-4">Log & Comments</h3>
+                             <div id="comments-display" class="max-h-60 overflow-y-auto space-y-3 bg-gray-50 p-3 rounded-lg mb-4"></div>
+                             <div data-permission="canComment">
+                                 <textarea id="new-comment-input" class="w-full rounded-md border-gray-300" rows="2" placeholder="เพิ่มความคิดเห็น..."></textarea>
+                                 <button id="post-comment-btn" class="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">ส่งข้อความ</button>
+                             </div>
                         </div>
                     </div>
                 </div>
@@ -658,7 +681,7 @@
                         </div>
                     <div id="charts-container" class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
                         </div>
-                    <div class="admin-only mt-12 pt-8 border-t-2 border-dashed border-red-300 text-center">
+                    <div data-permission="canManageSystem" class="mt-12 pt-8 border-t-2 border-dashed border-red-300 text-center">
                         <h3 class="text-xl font-bold text-red-600 mb-4">ส่วนของผู้ดูแลระบบ</h3>
                         <div class="flex justify-center gap-4">
                             <button id="backup-restore-btn" class="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:bg-gray-700">สำรอง / กู้คืนข้อมูล</button>
