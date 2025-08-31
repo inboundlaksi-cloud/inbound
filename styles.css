@@ -1,3 +1,4 @@
+/* styles.css */
 body {
     font-family: 'Sarabun', 'Inter', sans-serif;
     background: linear-gradient(135deg, #f0f9ff 0%, #cbebff 50%, #d8e6ff 100%);
@@ -45,12 +46,10 @@ body {
 .event-dot-green { background-color: #22c55e; } /* Completed */
 .event-dot-red { background-color: #ef4444; } /* Issue */
 .event-dot-purple { background-color: #8b5cf6; } /* Scheduled */
-
 /* Role-based visibility classes (Legacy, now handled by JS) */
 [data-permission] {
     display: none;
 }
-
 .star-rating .star {
     color: #d1d5db; /* gray-300 */
     cursor: pointer;
@@ -151,7 +150,6 @@ body {
     overflow-x: auto;
     margin-bottom: 20px;
 }
-
 /* Star System Styles */
 .star-display {
     display: flex;
@@ -212,7 +210,6 @@ body {
     font-size: 1.5rem;
     margin-right: 5px;
 }
-
 /* Loading Container */
 .loading-container {
     position: fixed;
@@ -226,7 +223,6 @@ body {
     align-items: center;
     z-index: 9999;
 }
-
 .loading-spinner {
     width: 50px;
     height: 50px;
@@ -235,47 +231,38 @@ body {
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
-
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
-
 /* Improved UI/UX */
 .button-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
-
 table {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
-
 thead {
     background-color: #f8fafc;
 }
-
 th, td {
     padding: 12px 15px;
 }
-
 tr:hover {
     background-color: #f1f5f9;
 }
-
 .card {
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     transition: all 0.3s ease;
 }
-
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
 }
-
 /* KPI Issue Indicator */
 .kpi-issue-indicator {
     display: inline-flex;
@@ -289,43 +276,35 @@ tr:hover {
     font-weight: 600;
     color: #b91c1c;
 }
-
 /* Custom styles for pending TFORs */
 .pending-tfor-card {
     background-color: #fffbeb;
     border-left: 4px solid #f59e0b;
 }
-
 .waiting-receive-card {
     background-color: #f0f9ff;
     border-left: 4px solid #0ea5e9;
 }
-
 /* LOG Table Styles */
 .log-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
 }
-
 .log-table th, .log-table td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
 }
-
 .log-table th {
     background-color: #f2f2f2;
 }
-
 .log-table tr:nth-child(even) {
     background-color: #f9f9f9;
 }
-
 .log-table tr:hover {
     background-color: #f1f5f9;
 }
-
 /* ปุ่มวางแผนงาน */
 .plan-work-btn {
     background-color: #8b5cf6;
@@ -340,12 +319,10 @@ tr:hover {
     align-items: center;
     gap: 4px;
 }
-
 .plan-work-btn:hover {
     background-color: #7c3aed;
     transform: translateY(-1px);
 }
-
 /* ปฏิทินสำหรับเลือกวันที่วางแผน */
 .calendar-picker {
     position: absolute;
@@ -362,20 +339,17 @@ tr:hover {
 .calendar-picker.active {
     display: block;
 }
-
 .calendar-picker-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
 }
-
 .calendar-picker-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 4px;
 }
-
 .calendar-picker-day {
     aspect-ratio: 1;
     display: flex;
@@ -385,20 +359,16 @@ tr:hover {
     cursor: pointer;
     transition: all 0.2s;
 }
-
 .calendar-picker-day:hover {
     background-color: #f3f4f6;
 }
-
 .calendar-picker-day.selected {
     background-color: #8b5cf6;
     color: white;
 }
-
 .calendar-picker-day.other-month {
     color: #d1d5db;
 }
-
 .calendar-picker-day.today {
     font-weight: bold;
     color: #8b5cf6;
@@ -407,7 +377,6 @@ tr:hover {
 .calendar-day {
     position: relative;
 }
-
 .calendar-tooltip {
     position: absolute;
     z-index: 10;
@@ -425,12 +394,10 @@ tr:hover {
     transform: translateX(-50%);
     margin-top: 5px;
 }
-
 .calendar-day:hover .calendar-tooltip {
     opacity: 1;
     pointer-events: auto;
 }
-
 .calendar-tooltip::before {
     content: '';
     position: absolute;
@@ -441,22 +408,222 @@ tr:hover {
     border-style: solid;
     border-color: transparent transparent white transparent;
 }
-
 /* Custom Scrollbar for Comments */
 #comments-display::-webkit-scrollbar {
     width: 8px;
 }
-
 #comments-display::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
 }
-
 #comments-display::-webkit-scrollbar-thumb {
     background: #ccc;
     border-radius: 10px;
 }
-
 #comments-display::-webkit-scrollbar-thumb:hover {
     background: #aaa;
+}
+
+/* Add these styles to your existing styles.css file */
+/* Animation Keyframes */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+@keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+.hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.hover-lift:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+/* Quick TFOR Form Styles */
+.quick-tfor-section {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+.quick-tfor-section:hover {
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+.quick-tfor-section h2 {
+    color: #7c3aed;
+    margin-bottom: 1rem;
+}
+.quick-tfor-section input,
+.quick-tfor-section select {
+    transition: all 0.2s ease;
+}
+.quick-tfor-section input:focus,
+.quick-tfor-section select:focus {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+#quick-create-tfor-btn {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    transition: all 0.3s ease;
+}
+#quick-create-tfor-btn:hover {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(124, 58, 237, 0.3);
+}
+/* Role Indicators */
+.role-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.role-admin {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+.role-supervisor {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+.role-senior {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+.role-officer {
+    background-color: #e0e7ff;
+    color: #3730a3;
+}
+.role-viewer {
+    background-color: #f3f4f6;
+    color: #4b5563;
+}
+/* Enhanced Modal Animations */
+.modal-content {
+    animation: slideUp 0.3s ease-out;
+}
+/* Loading Spinner Improvements */
+.loading-spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 3px solid white;
+    animation: spin 1s linear infinite;
+}
+/* Notification Toast Improvements */
+#notification-toast {
+    animation: slideInRight 0.5s ease-out, slideOutRight 0.5s ease-out 2.5s forwards;
+}
+/* Smooth Scrolling */
+html {
+    scroll-behavior: smooth;
+}
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+/* Table Container Smooth Scrolling */
+.table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #8b5cf6 #f3f4f6;
+}
+.table-container::-webkit-scrollbar {
+    height: 8px;
+}
+.table-container::-webkit-scrollbar-track {
+    background: #f3f4f6;
+}
+.table-container::-webkit-scrollbar-thumb {
+    background-color: #8b5cf6;
+    border-radius: 4px;
+}
+/* Button Hover Effects */
+.btn-hover {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+.btn-hover::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+.btn-hover:hover::before {
+    left: 100%;
+}
+/* Card Hover Effects */
+.card, .animated-icon, button {
+    transition: all 0.3s ease;
+}
+.card:hover, .animated-icon:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+button:hover {
+    transform: scale(1.05);
+}
+/* Table Row Hover Effects */
+tbody tr {
+    transition: background-color 0.2s ease;
+}
+tbody tr:hover {
+    background-color: #f9fafb;
+}
+/* Modal Overlay Blur Effect */
+.modal-overlay {
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+/* Loading Container Blur Effect */
+.loading-container {
+    backdrop-filter: blur(2px);
 }
