@@ -45,10 +45,12 @@ body {
 .event-dot-green { background-color: #22c55e; } /* Completed */
 .event-dot-red { background-color: #ef4444; } /* Issue */
 .event-dot-purple { background-color: #8b5cf6; } /* Scheduled */
+
 /* Role-based visibility classes (Legacy, now handled by JS) */
 [data-permission] {
     display: none;
 }
+
 .star-rating .star {
     color: #d1d5db; /* gray-300 */
     cursor: pointer;
@@ -149,6 +151,7 @@ body {
     overflow-x: auto;
     margin-bottom: 20px;
 }
+
 /* Star System Styles */
 .star-display {
     display: flex;
@@ -209,6 +212,7 @@ body {
     font-size: 1.5rem;
     margin-right: 5px;
 }
+
 /* Loading Container */
 .loading-container {
     position: fixed;
@@ -222,6 +226,7 @@ body {
     align-items: center;
     z-index: 9999;
 }
+
 .loading-spinner {
     width: 50px;
     height: 50px;
@@ -230,38 +235,47 @@ body {
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
 /* Improved UI/UX */
 .button-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
+
 table {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
+
 thead {
     background-color: #f8fafc;
 }
+
 th, td {
     padding: 12px 15px;
 }
+
 tr:hover {
     background-color: #f1f5f9;
 }
+
 .card {
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     transition: all 0.3s ease;
 }
+
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
 }
+
 /* KPI Issue Indicator */
 .kpi-issue-indicator {
     display: inline-flex;
@@ -275,35 +289,43 @@ tr:hover {
     font-weight: 600;
     color: #b91c1c;
 }
+
 /* Custom styles for pending TFORs */
 .pending-tfor-card {
     background-color: #fffbeb;
     border-left: 4px solid #f59e0b;
 }
+
 .waiting-receive-card {
     background-color: #f0f9ff;
     border-left: 4px solid #0ea5e9;
 }
+
 /* LOG Table Styles */
 .log-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
 }
+
 .log-table th, .log-table td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
 }
+
 .log-table th {
     background-color: #f2f2f2;
 }
+
 .log-table tr:nth-child(even) {
     background-color: #f9f9f9;
 }
+
 .log-table tr:hover {
     background-color: #f1f5f9;
 }
+
 /* ปุ่มวางแผนงาน */
 .plan-work-btn {
     background-color: #8b5cf6;
@@ -318,10 +340,12 @@ tr:hover {
     align-items: center;
     gap: 4px;
 }
+
 .plan-work-btn:hover {
     background-color: #7c3aed;
     transform: translateY(-1px);
 }
+
 /* ปฏิทินสำหรับเลือกวันที่วางแผน */
 .calendar-picker {
     position: absolute;
@@ -338,17 +362,20 @@ tr:hover {
 .calendar-picker.active {
     display: block;
 }
+
 .calendar-picker-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
 }
+
 .calendar-picker-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 4px;
 }
+
 .calendar-picker-day {
     aspect-ratio: 1;
     display: flex;
@@ -358,16 +385,20 @@ tr:hover {
     cursor: pointer;
     transition: all 0.2s;
 }
+
 .calendar-picker-day:hover {
     background-color: #f3f4f6;
 }
+
 .calendar-picker-day.selected {
     background-color: #8b5cf6;
     color: white;
 }
+
 .calendar-picker-day.other-month {
     color: #d1d5db;
 }
+
 .calendar-picker-day.today {
     font-weight: bold;
     color: #8b5cf6;
@@ -376,6 +407,7 @@ tr:hover {
 .calendar-day {
     position: relative;
 }
+
 .calendar-tooltip {
     position: absolute;
     z-index: 10;
@@ -393,10 +425,12 @@ tr:hover {
     transform: translateX(-50%);
     margin-top: 5px;
 }
+
 .calendar-day:hover .calendar-tooltip {
     opacity: 1;
     pointer-events: auto;
 }
+
 .calendar-tooltip::before {
     content: '';
     position: absolute;
@@ -407,349 +441,22 @@ tr:hover {
     border-style: solid;
     border-color: transparent transparent white transparent;
 }
+
 /* Custom Scrollbar for Comments */
 #comments-display::-webkit-scrollbar {
     width: 8px;
 }
+
 #comments-display::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
 }
+
 #comments-display::-webkit-scrollbar-thumb {
     background: #ccc;
     border-radius: 10px;
 }
+
 #comments-display::-webkit-scrollbar-thumb:hover {
     background: #aaa;
-}
-
-/* สำหรับส่วนแสดงงานด่วน */
-#urgent-tasks-container {
-    border-left: 4px solid #ef4444;
-}
-.urgent-task-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background-color: #fef2f2;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    transition: all 0.2s;
-}
-.urgent-task-item:hover {
-    background-color: #fee2e2;
-    transform: translateX(4px);
-}
-.urgent-task-priority {
-    font-weight: bold;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-}
-.priority-high {
-    background-color: #ef4444;
-    color: white;
-}
-.priority-medium {
-    background-color: #f59e0b;
-    color: white;
-}
-/* สำหรับส่วนความคืบหน้า */
-#progress-tracking-container {
-    border-left: 4px solid #3b82f6;
-}
-.progress-step {
-    text-align: center;
-    padding: 8px;
-    border-radius: 8px;
-    transition: all 0.2s;
-}
-.progress-step.completed {
-    background-color: #dbeafe;
-    color: #1d4ed8;
-}
-.progress-step.active {
-    background-color: #3b82f6;
-    color: white;
-}
-.progress-step-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 8px;
-    font-weight: bold;
-}
-/* สำหรับส่วนเวลาที่ใช้ */
-#performance-timer-container {
-    border-left: 4px solid #8b5cf6;
-}
-.timer-display {
-    font-family: 'Courier New', monospace;
-    font-size: 2rem;
-    font-weight: bold;
-    padding: 16px;
-    background-color: #f3f4f6;
-    border-radius: 8px;
-    text-align: center;
-}
-/* สำหรับส่วนการอนุมัติ */
-#approval-container {
-    border-left: 4px solid #10b981;
-}
-.approval-status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-}
-.status-approved {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-.status-pending {
-    background-color: #fef3c7;
-    color: #92400e;
-}
-.status-rejected {
-    background-color: #fee2e2;
-    color: #991b1b;
-}
-/* สำหรับส่วนประวัติการแก้ไข */
-#edit-history-container {
-    border-left: 4px solid #f59e0b;
-}
-.history-item {
-    padding: 12px;
-    background-color: #fffbeb;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    border-left: 3px solid #f59e0b;
-}
-.history-item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-}
-.history-item-action {
-    font-weight: 600;
-    color: #92400e;
-}
-.history-item-time {
-    font-size: 12px;
-    color: #6b7280;
-}
-/* สำหรับส่วนค้นหาขั้นสูง */
-#advanced-search-container {
-    border-left: 4px solid #6366f1;
-}
-.search-result-item {
-    padding: 16px;
-    background-color: #f8fafc;
-    border-radius: 8px;
-    margin-bottom: 12px;
-    border: 1px solid #e2e8f0;
-    transition: all 0.2s;
-}
-.search-result-item:hover {
-    background-color: #f1f5f9;
-    border-color: #cbd5e1;
-    transform: translateY(-2px);
-}
-.search-result-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-.search-result-title {
-    font-weight: 600;
-    color: #1e293b;
-}
-.search-result-status {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-}
-/* สำหรับส่วนข้อมูลเชิงลึก */
-#insightful-analytics-container {
-    border-left: 4px solid #ec4899;
-}
-.insight-card {
-    padding: 16px;
-    background-color: #fdf2f8;
-    border-radius: 8px;
-    text-align: center;
-    transition: all 0.2s;
-}
-.insight-card:hover {
-    background-color: #fce7f3;
-    transform: translateY(-2px);
-}
-.insight-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin: 8px 0;
-}
-.insight-trend {
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.trend-up {
-    color: #10b981;
-}
-.trend-down {
-    color: #ef4444;
-}
-/* สำหรับส่วนสถิติการใช้งาน */
-#usage-stats-container {
-    border-left: 4px solid #06b6d4;
-}
-.usage-stat-card {
-    text-align: center;
-    padding: 16px;
-    background-color: #f0fdfa;
-    border-radius: 8px;
-    transition: all 0.2s;
-}
-.usage-stat-card:hover {
-    background-color: #ccfbf1;
-    transform: translateY(-2px);
-}
-.usage-stat-value {
-    font-size: 2.5rem;
-    font-weight: bold;
-    margin: 8px 0;
-}
-/* สำหรับปุ่มและฟอร์ม */
-.btn-primary {
-    background-color: #3b82f6;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.btn-primary:hover {
-    background-color: #2563eb;
-    transform: translateY(-1px);
-}
-.btn-secondary {
-    background-color: #6b7280;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.btn-secondary:hover {
-    background-color: #4b5563;
-}
-.btn-success {
-    background-color: #10b981;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.btn-success:hover {
-    background-color: #059669;
-}
-.btn-danger {
-    background-color: #ef4444;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.btn-danger:hover {
-    background-color: #dc2626;
-}
-/* สำหรับการแสดงผลแบบ responsive */
-@media (max-width: 768px) {
-    .progress-steps {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .usage-stat-card {
-        margin-bottom: 16px;
-    }
-    
-    .search-result-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .search-result-status {
-        margin-top: 8px;
-    }
-}
-/* สำหรับ animation */
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-.slide-in {
-    animation: slideIn 0.3s ease-out;
-}
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
-    100% {
-        transform: scale(1);
-    }
-}
-.pulse {
-    animation: pulse 2s infinite;
-}
-/* สำหรับ loading state */
-.loading-skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-}
-@keyframes loading {
-    0% {
-        background-position: 200% 0;
-    }
-    100% {
-        background-position: -200% 0;
-    }
-}
-.skeleton-text {
-    height: 16px;
-    border-radius: 4px;
-    margin-bottom: 8px;
-}
-.skeleton-title {
-    height: 24px;
-    border-radius: 4px;
-    margin-bottom: 16px;
-    width: 60%;
-}
-.skeleton-card {
-    height: 120px;
-    border-radius: 8px;
-    margin-bottom: 16px;
 }
