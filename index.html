@@ -236,75 +236,6 @@
                         <p id="summary-issues" class="text-4xl font-bold text-red-500 mt-1">0</p>
                     </div>
                 </div>
-                
-                <!-- ส่วนเพิ่มเติมสำหรับหน้าหลัก -->
-                <div id="urgent-tasks-container" class="mb-8 bg-white rounded-2xl shadow-lg p-6">
-                    <h3 class="text-xl font-bold text-red-600 mb-4">ดำเนินการด่วน</h3>
-                    <div id="urgent-tasks-list" class="space-y-3"></div>
-                </div>
-                
-                <div id="daily-performance-container" class="mb-8 bg-white rounded-2xl shadow-lg p-6">
-                    <h3 class="text-xl font-bold text-blue-600 mb-4">ประสิทธิภาพวันนี้</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="text-center">
-                            <p class="text-3xl font-bold text-blue-500" id="daily-created">0</p>
-                            <p class="text-sm text-gray-600">สร้างใหม่</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-3xl font-bold text-green-500" id="daily-checked">0</p>
-                            <p class="text-sm text-gray-600">เช็คเสร็จ</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-3xl font-bold text-purple-500" id="daily-received">0</p>
-                            <p class="text-sm text-gray-600">รับสินค้า</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-3xl font-bold text-red-500" id="daily-issues">0</p>
-                            <p class="text-sm text-gray-600">พบปัญหา</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="advanced-search-container" class="mb-8 bg-white rounded-2xl shadow-lg p-6">
-                    <h3 class="text-xl font-bold mb-4">ค้นหาขั้นสูง</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">ช่วงวันที่</label>
-                            <input type="date" id="search-date-from" class="w-full rounded-md border-gray-300 shadow-sm">
-                            <input type="date" id="search-date-to" class="w-full rounded-md border-gray-300 shadow-sm mt-2">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">สาขา</label>
-                            <select id="search-branch" class="w-full rounded-md border-gray-300 shadow-sm">
-                                <option value="">ทุกสาขา</option>
-                                <option value="WH.40 (NDC)">WH.40 (NDC)</option>
-                                <option value="WH.61 Chiangmai">WH.61 Chiangmai</option>
-                                <option value="WH.62 Suratthani">WH.62 Suratthani</option>
-                                <option value="WH.63 Nakhon Ratchasima">WH.63 Nakhon Ratchasima</option>
-                                <option value="WH.64 Leamchabang">WH.64 Leamchabang</option>
-                                <option value="WH.65 Udon Thani">WH.65 Udon Thani</option>
-                                <option value="WH.66 Phitsanulok">WH.66 Phitsanulok</option>
-                                <option value="WH.67 Ratchaburi">WH.67 Ratchaburi</option>
-                                <option value="WH.68 Hat Yai">WH.68 Hat Yai</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
-                            <select id="search-status" class="w-full rounded-md border-gray-300 shadow-sm">
-                                <option value="">ทุกสถานะ</option>
-                                <option value="pending">รอดำเนินการ</option>
-                                <option value="completed">เสร็จสิ้น</option>
-                                <option value="issues">มีปัญหา</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <button id="advanced-search-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg">ค้นหา</button>
-                        <button id="clear-search-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg ml-2">ล้าง</button>
-                    </div>
-                    <div id="search-results" class="mt-6"></div>
-                </div>
-                
                 <div id="go-to-ai-chat" class="animated-icon p-6 bg-gradient-to-r from-fuchsia-500 to-indigo-600 rounded-3xl shadow-lg hover:shadow-2xl transition-all cursor-pointer text-white text-center mb-8 flex flex-col sm:flex-row items-center justify-center">
                     <svg class="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-0 sm:mr-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     <div>
@@ -436,33 +367,6 @@
                             </div>
                     </div>
                     
-                    <!-- ส่วนเพิ่มเติมสำหรับหน้าโปรไฟล์ -->
-                    <div id="usage-stats-container" class="bg-white rounded-2xl shadow-lg p-8">
-                        <h2 class="text-xl font-bold mb-6 text-gray-800">สถิติการใช้งาน</h2>
-                        <div class="grid grid-cols-2 gap-6">
-                            <div class="text-center">
-                                <p class="text-4xl font-bold text-blue-500" id="user-created-count">0</p>
-                                <p class="text-gray-600">สร้าง TFOR</p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-4xl font-bold text-green-500" id="user-checked-count">0</p>
-                                <p class="text-gray-600">เช็คสินค้า</p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-4xl font-bold text-purple-500" id="user-received-count">0</p>
-                                <p class="text-gray-600">รับสินค้า</p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-4xl font-bold text-red-500" id="user-issues-count">0</p>
-                                <p class="text-gray-600">รายงานปัญหา</p>
-                            </div>
-                        </div>
-                        <div class="mt-6">
-                            <h3 class="text-lg font-semibold mb-3">กิจกรรมล่าสุด</h3>
-                            <div id="user-recent-activity" class="space-y-2 max-h-40 overflow-y-auto"></div>
-                        </div>
-                    </div>
-                    
                     <div class="bg-white rounded-2xl shadow-lg p-8">
                         <h2 class="text-xl font-bold mb-6 text-gray-800">กิจกรรมล่าสุดของฉัน</h2>
                         <div id="recent-activity-container" class="space-y-3">
@@ -589,7 +493,7 @@
                         <h2 class="text-3xl font-bold text-gray-900 mb-8">เมนูสำหรับ TRANFERS</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-center">
                             <div id="menu-1" class="animated-icon p-8 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <svg class="w-16 h-16 text-fuchsia-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2-10H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <svg class="w-16 h-16 text-fuchsia-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2-10H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2z"></path></svg>
                                 <h3 class="text-xl font-semibold">แบบฟอร์มลงข้อมูล</h3>
                             </div>
                             <div id="menu-2" class="animated-icon p-8 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
@@ -690,54 +594,6 @@
                     <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-lg p-8 md:p-12">
                         <button id="back-to-previous-view-button" class="mb-8 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700">กลับ</button>
                         <h2 id="check-view-title" class="text-3xl font-bold text-gray-900 mb-8 text-center">เช็คสินค้า</h2>
-                        
-                        <!-- ส่วนเพิ่มเติมสำหรับหน้าเช็คสินค้า -->
-                        <div id="progress-tracking-container" class="mb-8 bg-white rounded-2xl shadow-lg p-6">
-                            <h3 class="text-xl font-bold mb-4">ความคืบหน้าการทำงาน</h3>
-                            <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
-                                <div id="progress-bar" class="bg-blue-600 h-4 rounded-full" style="width: 0%"></div>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span>เริ่มต้น</span>
-                                <span id="progress-text">0%</span>
-                                <span>เสร็จสิ้น</span>
-                            </div>
-                            <div id="progress-steps" class="mt-4 grid grid-cols-4 gap-4"></div>
-                        </div>
-                        
-                        <div id="performance-timer-container" class="mb-8 bg-white rounded-2xl shadow-lg p-6">
-                            <h3 class="text-xl font-bold mb-4">เวลาที่ใช้ในการทำงาน</h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="text-center">
-                                    <div class="text-3xl font-bold text-blue-600" id="check-time">00:00:00</div>
-                                    <div class="text-sm text-gray-600">เวลาเช็คสินค้า</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-3xl font-bold text-purple-600" id="receive-time">00:00:00</div>
-                                    <div class="text-sm text-gray-600">เวลารับสินค้า</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="approval-container" class="mb-8 bg-white rounded-2xl shadow-lg p-6">
-                            <h3 class="text-xl font-bold mb-4">การอนุมัติงาน</h3>
-                            <div id="approval-status" class="mb-4">
-                                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800">
-                                    รอการอนุมัติ
-                                </span>
-                            </div>
-                            <div id="approval-details" class="mb-4"></div>
-                            <div id="approval-actions" class="admin-supervisor-only">
-                                <button id="approve-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg mr-2">อนุมัติ</button>
-                                <button id="reject-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg">ไม่อนุมัติ</button>
-                            </div>
-                        </div>
-                        
-                        <div id="edit-history-container" class="mb-8 bg-white rounded-2xl shadow-lg p-6">
-                            <h3 class="text-xl font-bold mb-4">ประวัติการแก้ไข</h3>
-                            <div id="edit-history-list" class="space-y-3 max-h-60 overflow-y-auto"></div>
-                        </div>
-                        
                         <div id="check-details-container" class="mb-8 p-6 bg-gray-50 rounded-2xl shadow-inner"></div>
                         <hr class="my-6">
                         <div id="check-section">
@@ -825,26 +681,6 @@
                         </div>
                     <div id="charts-container" class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
                         </div>
-                    
-                    <!-- ส่วนเพิ่มเติมสำหรับหน้าสถิติ -->
-                    <div id="insightful-analytics-container" class="bg-white rounded-2xl shadow-lg p-6">
-                        <h3 class="text-xl font-bold mb-4">ข้อมูลเชิงลึก</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h4 class="font-semibold mb-2">ปัญหาที่พบบ่อยที่สุด</h4>
-                                <div id="common-issues-chart" class="h-64"></div>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold mb-2">ประสิทธิภาพตามสาขา</h4>
-                                <div id="branch-performance-chart" class="h-64"></div>
-                            </div>
-                        </div>
-                        <div class="mt-6">
-                            <h4 class="font-semibold mb-2">ข้อมูลเชิงลึก</h4>
-                            <div id="insights-container" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-                        </div>
-                    </div>
-                    
                     <div data-permission="canManageSystem" class="mt-12 pt-8 border-t-2 border-dashed border-red-300 text-center">
                         <h3 class="text-xl font-bold text-red-600 mb-4">ส่วนของผู้ดูแลระบบ</h3>
                         <div class="flex justify-center gap-4">
