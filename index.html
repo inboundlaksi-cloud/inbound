@@ -449,497 +449,248 @@
         </div>
         
         <div id="ai-chat-view" class="view">
-
             <div class="flex flex-col h-screen">
-
                 <header class="bg-white shadow-sm">
-
                     <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-
                          <div class="flex items-center space-x-4">
-
                             <h1 class="font-bold text-xl text-fuchsia-600">INBOUND Assistant</h1>
-
                             <span class="user-display hidden text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full"></span>
-
                         </div>
-
                         <button class="back-to-main-menu inline-flex items-center px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-
                             กลับหน้าหลัก
-
                         </button>
-
                     </div>
-
                 </header>
-
                 <main id="chat-messages" class="flex-1 overflow-y-auto p-4 container mx-auto chat-message-container"></main>
-
                 <footer class="bg-white border-t">
-
                     <form id="chat-form" class="container mx-auto p-4 flex items-center">
-
                         <input type="text" id="chat-input" placeholder="พิมพ์คำถามของคุณที่นี่..." class="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-fuchsia-500">
-
                         <button type="submit" class="ml-4 p-3 bg-fuchsia-600 text-white rounded-full hover:bg-fuchsia-700">
-
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-
                         </button>
-
                     </form>
-
                 </footer>
-
             </div>
-
         </div>
-
         
-
         <div id="transfers-view" class="view">
-
              <header class="bg-white shadow-sm">
-
                 <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-
                     <div class="flex items-center space-x-4">
-
                         <h1 class="font-bold text-xl text-fuchsia-600">Transfers</h1>
-
                         <span class="user-display hidden text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full"></span>
-
                     </div>
-
                     <button class="back-to-main-menu inline-flex items-center px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-
                          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-
                         กลับหน้าหลัก
-
                     </button>
-
                 </div>
-
             </header>
-
             <main class="container mx-auto px-4 py-8 md:py-12">
-
                 <div id="transfers-menu-view">
-
                     <div class="max-w-4xl mx-auto text-center">
-
                         <h2 class="text-3xl font-bold text-gray-900 mb-8">เมนูสำหรับ TRANFERS</h2>
-
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-center">
-
                             <div id="menu-1" class="animated-icon p-8 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-
                                 <svg class="w-16 h-16 text-fuchsia-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2-10H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2z"></path></svg>
-
                                 <h3 class="text-xl font-semibold">แบบฟอร์มลงข้อมูล</h3>
-
                             </div>
-
                             <div id="menu-2" class="animated-icon p-8 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-
                                 <svg class="w-16 h-16 text-indigo-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-
                                 <h3 class="text-xl font-semibold">รายละเอียดข้อมูล TRANFERS</h3>
-
                             </div>
-
                             <div id="menu-3" class="animated-icon p-8 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-
                                 <svg class="w-16 h-16 text-yellow-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-
                                 <h3 class="text-xl font-semibold">เช็คเสร็จแล้ว</h3>
-
                             </div>
-
                             <div id="menu-4" class="animated-icon p-8 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-
                                 <svg class="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-
                                 <h3 class="text-xl font-semibold">สินค้ามีปัญหา</h3>
-
                             </div>
-
                         </div>
-
                     </div>
-
                 </div>
-
                 <div id="form-view" class="hidden">
-
                     <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-lg p-8 md:p-12">
-
                         <button class="back-to-transfers-menu mb-8 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700">กลับ</button>
-
                         <h2 class="text-3xl font-bold text-gray-900 mb-8 text-center">แบบฟอร์มลงสินค้าสาขา</h2>
-
                         <form id="inbound-form">
-
                             <div class="mb-6">
-
                                 <label for="delivery-date" class="block text-gray-700 font-semibold mb-2">วันที่รถมาส่ง</label>
-
                                 <input type="text" id="delivery-date" class="w-full rounded-lg border-gray-300 shadow-sm bg-gray-100" readonly>
-
                             </div>
-
                             <div class="mb-6">
-
                                 <label class="block text-gray-700 font-semibold mb-2">ทะเบียนรถ</label>
-
                                 <div class="flex space-x-4">
-
                                     <div class="flex-grow">
-
                                         <label for="lp-front" class="block text-xs text-gray-500 mb-1">ด้านหน้า (เช่น กข123)</label>
-
                                         <input type="text" id="lp-front" maxlength="4" class="w-full rounded-lg border-2 border-fuchsia-300 shadow-md uppercase text-lg text-center font-bold">
-
                                     </div>
-
                                     <div class="flex-grow">
-
                                         <label for="lp-back" class="block text-xs text-gray-500 mb-1">ด้านหลัง (ตัวเลข 4 ตัว)</label>
-
                                         <input type="text" id="lp-back" maxlength="4" pattern="[0-9]{4}" class="w-full rounded-lg border-2 border-fuchsia-300 shadow-md text-lg text-center font-bold">
-
                                     </div>
-
                                 </div>
-
                             </div>
-
                             <div class="mb-6">
-
                                 <label class="block text-gray-700 font-semibold mb-2">รูปภาพรวมบนรถ</label>
-
                                 <div id="drag-drop-area" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center text-gray-500 cursor-pointer hover:bg-gray-50">
-
                                     ลากและวางรูปภาพที่นี่ หรือคลิกเพื่อเลือกไฟล์
-
                                 </div>
-
                                 <input type="file" id="file-input" class="hidden" multiple accept="image/*">
-
                                 <div id="image-preview" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-
                             </div>
-
                             <div class="mb-6">
-
                                 <h3 class="text-xl font-bold text-gray-800 mb-4">รายละเอียดพาเลท (TFOR)</h3>
-
                                 <div id="tfor-container" class="space-y-6"></div>
-
                                 <button type="button" id="add-tfor-button" class="mt-4 px-4 py-2 bg-fuchsia-600 text-white rounded-lg shadow-md hover:bg-fuchsia-700 edit-button">เพิ่ม TFOR</button>
-
                             </div>
-
                             <div class="mt-8 text-center">
-
                                 <button type="submit" id="save-button" class="w-full md:w-auto px-10 py-3 bg-indigo-600 text-white rounded-lg font-semibold shadow-lg hover:bg-indigo-700 flex items-center justify-center mx-auto edit-button">บันทึกข้อมูล</button>
-
                             </div>
-
                         </form>
-
                     </div>
-
                 </div>
-
                 <div id="details-view" class="hidden">
-
                      <div class="max-w-6xl mx-auto bg-white rounded-3xl shadow-lg p-8 md:p-12">
-
                         <button class="back-to-transfers-menu mb-8 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700">กลับ</button>
-
                         <div class="flex justify-between items-center mb-6">
-
                             <h2 class="text-3xl font-bold text-gray-900 text-center flex-grow">รายละเอียดข้อมูล TRANFERS</h2>
-
                             <button id="plan-work-btn" data-permission="canPlanWork" class="plan-work-btn">
-
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-
                                 </svg>
-
                                 วางแผนงาน
-
                             </button>
-
                         </div>
-
                         <div class="flex flex-col md:flex-row gap-4 mb-6">
-
-                            <input type="search" id="details-search" placeholder="ค้นหา TFOR 4 ตัวท้าย, ทะเบียนรถ..." class="w-full p-2 border rounded-lg">
-
+                            <input type="search" id="details-search" placeholder="ค้นหา TFOR 4 ตัวท้าย, ทะเบียนรถ, หรือ TFOR พ่วง..." class="w-full p-2 border rounded-lg">
                             <select id="details-sort" class="w-full md:w-auto p-2 border rounded-lg">
-
                                 <option value="date-desc">เรียงตามวันที่ (ล่าสุดก่อน)</option>
-
                                 <option value="date-asc">เรียงตามวันที่ (เก่าสุดก่อน)</option>
-
                                 <option value="branch-asc">เรียงตามสาขา (ก-ฮ)</option>
-
                             </select>
-
                         </div>
-
                         <div id="details-table-container" class="overflow-x-auto"></div>
-
                     </div>
-
                 </div>
-
                 <div id="completed-view" class="hidden">
-
                     <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-lg p-8 md:p-12">
-
                         <button class="back-to-transfers-menu mb-8 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700">กลับ</button>
-
                         <h2 class="text-3xl font-bold text-gray-900 mb-4 text-center">เช็คเสร็จแล้ว</h2>
-
                         <div class="mb-6"><input type="search" id="completed-search" placeholder="ค้นหา TFOR, ทะเบียนรถ, สาขา..." class="w-full p-2 border rounded-lg"></div>
-
                         <div id="completed-container" class="space-y-6"></div>
-
                     </div>
-
                 </div>
-
                 <div id="issues-view" class="hidden">
-
                      <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-lg p-8 md:p-12">
-
                         <button class="back-to-transfers-menu mb-8 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700">กลับ</button>
-
                         <h2 class="text-3xl font-bold text-gray-900 mb-8 text-center">รายการสินค้ามีปัญหา</h2>
-
                         <div id="issues-container" class="space-y-4"></div>
-
                     </div>
-
                 </div>
-
                 <div id="check-view" class="hidden">
-
                     <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-lg p-8 md:p-12">
-
                         <button id="back-to-previous-view-button" class="mb-8 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700">กลับ</button>
-
                         <h2 id="check-view-title" class="text-3xl font-bold text-gray-900 mb-8 text-center">เช็คสินค้า</h2>
-
                         <div id="check-details-container" class="mb-8 p-6 bg-gray-50 rounded-2xl shadow-inner"></div>
-
                         <hr class="my-6">
-
                         <div id="check-section">
-
                             <h3 class="text-xl font-bold text-gray-800 mb-4">ยืนยันการเช็คสินค้า</h3>
-
                             <div id="performance-timer-section" class="mb-4"></div>
-
                             <div id="pallet-buttons-container" class="flex flex-wrap gap-2 mb-6"></div>
-
                         </div>
-
                         <hr class="my-6">
-
                         <div id="receive-section">
-
                             <h3 class="text-xl font-bold text-gray-800 mb-4">รับสินค้า</h3>
-
                             <div id="receive-pallet-buttons-container" class="flex flex-wrap gap-2 mb-6"></div>
-
                         </div>
-
                         <hr class="my-6">
-
                         <div id="report-issue-section">
-
                              <h3 class="text-xl font-bold text-gray-800 mb-4">รายงานปัญหาทั้งหมด</h3>
-
                             <div id="issue-pallet-buttons-container" class="flex flex-wrap gap-2 mb-6"></div>
-
                             <div id="issue-forms-container"></div>
-
                         </div>
-
                         <hr class="my-6">
-
                         <div id="comment-section">
-
                              <h3 class="text-xl font-bold text-gray-800 mb-4">Log & Comments</h3>
-
                              <div id="comments-display" class="max-h-60 overflow-y-auto space-y-3 bg-gray-50 p-3 rounded-lg mb-4"></div>
-
                              <div data-permission="canComment">
-
                                  <textarea id="new-comment-input" class="w-full rounded-md border-gray-300" rows="2" placeholder="เพิ่มความคิดเห็น..."></textarea>
-
                                  <button id="post-comment-btn" class="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">ส่งข้อความ</button>
-
                              </div>
-
                         </div>
-
                     </div>
-
                 </div>
-
             </main>
-
         </div>
-
         
-
         <div id="calendar-view" class="view">
-
             <header class="bg-white shadow-sm">
-
                 <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-
                     <div class="flex items-center space-x-4">
-
                         <h1 class="font-bold text-xl text-fuchsia-600">ปฏิทินวางแผนงาน</h1>
-
                         <span class="user-display hidden text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full"></span>
-
                     </div>
-
                     <button class="back-to-main-menu inline-flex items-center px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-
                         กลับหน้าหลัก
-
                     </button>
-
                 </div>
-
             </header>
-
             <main class="container mx-auto p-4">
-
                 <div id="calendar-container" class="bg-white p-6 rounded-2xl shadow-lg"></div>
-
             </main>
-
         </div>
-
         
-
         <div id="statistics-view" class="view">
-
              <header class="bg-white shadow-sm">
-
                 <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-
                     <div class="flex items-center space-x-4">
-
                         <h1 class="font-bold text-xl text-fuchsia-600">สถิติและ Dashboard</h1>
-
                         <span class="user-display hidden text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full"></span>
-
                     </div>
-
                     <button class="back-to-main-menu inline-flex items-center px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-
                         กลับหน้าหลัก
-
                     </button>
-
                 </div>
-
             </header>
-
             <main class="container mx-auto p-4">
-
                 <div class="flex justify-between items-center mb-6">
-
                     <div id="stats-timeframe-buttons" class="flex space-x-2 bg-white p-1 rounded-full shadow-sm">
-
                         <button data-frame="week" class="timeframe-btn px-4 py-2 rounded-full text-sm font-semibold">สัปดาห์นี้</button>
-
                         <button data-frame="month" class="timeframe-btn px-4 py-2 rounded-full text-sm font-semibold bg-fuchsia-600 text-white">เดือนนี้</button>
-
                         <button data-frame="year" class="timeframe-btn px-4 py-2 rounded-full text-sm font-semibold">ปีนี้</button>
-
                     </div>
-
                     <div class="flex gap-2">
-
                         <button id="export-excel-btn" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-
                             Export Excel
-
                         </button>
-
                         <button id="export-pdf-btn" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-
                             Export PDF
-
                         </button>
-
                     </div>
-
                 </div>
-
                 <div id="statistics-report-container" class="bg-white rounded-2xl shadow-lg p-6">
-
                     <h2 id="report-title" class="text-2xl font-bold text-center mb-6">รายงานสรุปผล</h2>
-
                     <div id="statistics-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
                         </div>
-
                     <div id="charts-container" class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-
                         </div>
-
                     <div data-permission="canManageSystem" class="mt-12 pt-8 border-t-2 border-dashed border-red-300 text-center">
-
                         <h3 class="text-xl font-bold text-red-600 mb-4">ส่วนของผู้ดูแลระบบ</h3>
-
                         <div class="flex justify-center gap-4">
-
                             <button id="backup-restore-btn" class="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:bg-gray-700">สำรอง / กู้คืนข้อมูล</button>
-
                             <button id="delete-all-data-btn" class="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:bg-red-700">ลบข้อมูลของเข้าทั้งหมด (เพื่อทดสอบ)</button>
-
                         </div>
-
                     </div>
-
                 </div>
-
             </main>
-
         </div>
-
     </div>
-
     
-
-    <script type="module" src="scripts.js"></script>
-
-</body>
-
-</html>
+    <script type="module" src
