@@ -4,6 +4,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 // Firestore Database
 import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
@@ -13,12 +14,30 @@ const firebaseConfig = {
     messagingSenderId: "1080446836155",
     appId: "1:1080446836155:web:da8d3f12f76d83b408389e"
 };
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
+
+// Permission Management System
+const PERMISSIONS = {
+    canViewKpi: ['Admin', 'Supervisor', 'Viewer'],
+    canManageUsers: ['Admin', 'Supervisor'],
+    canManageSystem: ['Admin'],
+    canPlanWork: ['Admin', 'Supervisor', 'Senior'],
+    canComment: ['Admin', 'Supervisor', 'Senior', 'Officer']
+};
+
+// Function to check if current user has a specific permission
+function hasPermission(permission) {
+    if (!currentUserProfile || !currentUserProfile.role) return false;
+    return PERMISSIONS[permission]?.includes(currentUserProfile.role) || false;
+}
+
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     const payload = {
@@ -81,6 +100,7 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
+
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -165,9 +185,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function showMainView(viewToShow) {
-        Object.values(views).forEach(v => v.style.display = 'none');
-        if (viewToShow) viewToShow.style.display = 'block';
-        window.scrollTo(0, 0);
+        Object.values(views).forEach(v => {
+            v.style.display = 'none';
+            v.classList.remove('fade-in');
+        });
+        
+        if (viewToShow) {
+            viewToShow.style.display = 'block';
+            // Add fade-in animation
+            setTimeout(() => {
+                viewToShow.classList.add('fade-in');
+            }, 10);
+        }
+        
+        // Smooth scroll to top
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
     }
     
     function showAuthForm(formToShow) {
@@ -203,35 +238,53 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updateUIForRoles() {
         if (!currentUserProfile) return;
-        const role = currentUserProfile.role || 'Officer';
-        const roles = {
-            'Admin': ['admin-only', 'admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canManageSystem', 'canPlanWork', 'canComment'],
-            'Supervisor': ['admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canPlanWork', 'canComment'],
-            'Senior': ['senior-and-up', 'canViewKpi', 'canPlanWork', 'canComment'],
-            'Officer': ['canComment'],
-            'Viewer': []
-        };
         
-        // Hide all role-based elements first
-        document.querySelectorAll('[data-permission]').forEach(el => el.style.display = 'none');
+        // Hide all permission-based elements first
+        document.querySelectorAll('[data-permission]').forEach(el => {
+            el.style.display = 'none';
+        });
         
         // Show elements based on the current user's role
-        if (roles[role]) {
-            roles[role].forEach(permission => {
+        Object.keys(PERMISSIONS).forEach(permission => {
+            if (hasPermission(permission)) {
                 document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
-                    el.style.display = 'block'; // Or 'inline-block', 'flex' etc. as needed
+                    el.style.display = '';
                 });
+            }
+        });
+        
+        // Special handling for KPI page access
+        const kpiElements = document.querySelectorAll('[data-permission="canViewKpi"]');
+        const canViewKpi = hasPermission('canViewKpi');
+        
+        kpiElements.forEach(el => {
+            if (!canViewKpi) {
+                el.style.display = 'none';
+            } else {
+                el.style.display = '';
+            }
+        });
+        
+        // Handle delete permissions specifically
+        if (!hasPermission('canManageUsers') && currentUserProfile.role !== 'Senior') {
+            document.querySelectorAll('.delete-permission').forEach(el => {
+                el.style.display = 'none';
             });
         }
         
-        // Handle delete permissions specifically for senior and viewer roles
-        if (role === 'Senior' || role === 'Viewer') {
-            document.querySelectorAll('.delete-permission').forEach(el => el.style.display = 'none');
+        // For Viewer role, hide all edit buttons
+        if (currentUserProfile.role === 'Viewer') {
+            document.querySelectorAll('.edit-button').forEach(el => {
+                el.style.display = 'none';
+            });
         }
         
-        // For Viewer role, hide all edit buttons
-        if (role === 'Viewer') {
-            document.querySelectorAll('.edit-button').forEach(el => el.style.display = 'none');
+        // Add role indicator
+        const roleDisplay = document.getElementById('user-role-display');
+        if (roleDisplay && currentUserProfile.role) {
+            roleDisplay.textContent = currentUserProfile.role;
+            roleDisplay.className = `hidden px-3 py-1 text-xs font-bold text-white rounded-full role-${currentUserProfile.role.toLowerCase()}`;
+            roleDisplay.classList.remove('hidden');
         }
     }
     
@@ -243,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (userDoc.exists()) {
                 currentUserProfile = userDoc.data();
             } else {
-                // If user doc doesn't exist (e.g., new registration race condition), create a temporary one.
+                // If user doc doesn't exist, create a temporary one.
                 currentUserProfile = {
                     email: user.email,
                     firstName: "ผู้ใช้",
@@ -273,6 +326,11 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUIForRoles();
             setupFirestoreListeners();
             showMainView(views.mainMenu);
+            
+            // Add quick TFOR feature if user has permission
+            if (hasPermission('canPlanWork')) {
+                addQuickTforFeature();
+            }
         } else {
             detachFirestoreListeners();
             currentUserProfile = null;
@@ -655,13 +713,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         tforBlock.querySelector('.remove-tfor-button').addEventListener('click', () => tforBlock.remove());
-
         // Listeners for Linked TFORs
         const addBtn = tforBlock.querySelector('.add-linked-tfor-btn');
         const input = tforBlock.querySelector('.linked-tfor-input');
         const list = tforBlock.querySelector('.linked-tfor-list');
         const year = new Date().getFullYear().toString().substr(-2);
-
         addBtn.addEventListener('click', () => {
             const tforValue = input.value.trim();
             if (tforValue && /^\d{4}$/.test(tforValue)) {
@@ -725,7 +781,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const palletNotes = block.querySelector('.pallet-notes').value;
                 const linkedTforElements = block.querySelectorAll('.linked-tfor-list span');
                 const linkedTfors = Array.from(linkedTforElements).map(span => span.textContent);
-
                 const tforData = {
                     deliveryDate, licensePlate,
                     images: uploadedImagesBase64,
@@ -1379,7 +1434,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="linked-tfor-display" class="mt-4"></div>
             <div class="mt-4"><p class="text-sm font-semibold text-gray-500 mb-2">รูปภาพรวม</p>${imagesHTML}</div>
         `;
-
         const linkedTforContainer = document.getElementById('linked-tfor-display');
         if (currentTforData.linkedTfors && currentTforData.linkedTfors.length > 0) {
             linkedTforContainer.innerHTML = `
@@ -3563,6 +3617,204 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error("Error logging action:", error);
+        }
+    }
+    
+    // Add animation classes to elements when they're created
+    function addAnimationClasses() {
+        // Add fade-in animation to cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.classList.add('fade-in');
+        });
+        
+        // Add hover-lift class to interactive elements
+        document.querySelectorAll('.animated-icon, button').forEach(element => {
+            element.classList.add('hover-lift');
+        });
+        
+        // Add btn-hover class to buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.classList.add('btn-hover');
+        });
+    }
+    
+    // Call this function after views are rendered
+    addAnimationClasses();
+    
+    // Add smooth scrolling for all anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Function to add quick TFOR creation feature
+    function addQuickTforFeature() {
+        const mainMenuView = document.getElementById('main-menu-view');
+        const summaryCards = document.querySelector('.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4');
+        
+        // Create quick TFOR section
+        const quickTforSection = document.createElement('div');
+        quickTforSection.className = 'bg-white rounded-2xl shadow-lg p-6 mb-8 quick-tfor-section fade-in';
+        quickTforSection.innerHTML = `
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <svg class="w-8 h-8 text-fuchsia-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                สร้าง TFOR ด่วน
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ทะเบียนรถ (ด้านหน้า)</label>
+                    <input type="text" id="quick-lp-front" maxlength="4" placeholder="กข123" class="w-full rounded-lg border-2 border-fuchsia-300 shadow-md uppercase text-lg text-center font-bold">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ทะเบียนรถ (ด้านหลัง)</label>
+                    <input type="text" id="quick-lp-back" maxlength="4" pattern="[0-9]{4}" placeholder="1234" class="w-full rounded-lg border-2 border-fuchsia-300 shadow-md text-lg text-center font-bold">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">สาขาต้นทาง</label>
+                    <select id="quick-branch" class="w-full rounded-lg border-gray-300 shadow-sm">
+                        <option value="">เลือกสาขา</option>
+                        ${branches.map(branch => `<option value="${branch}">${branch}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">หมายเลข TFOR</label>
+                <div class="flex items-center">
+                    <span class="bg-gray-200 text-gray-600 px-4 py-2 rounded-l-lg font-mono">TFOR${new Date().getFullYear().toString().substr(-2)}000</span>
+                    <input type="text" id="quick-tfor-number" maxlength="4" placeholder="1234" class="w-24 rounded-r-lg border-gray-300 shadow-sm">
+                </div>
+            </div>
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนพาเลท</label>
+                <div class="flex items-center space-x-2">
+                    <input type="number" id="quick-pallet-count" min="1" max="20" value="1" class="w-20 rounded-lg border-gray-300 shadow-sm">
+                    <span class="text-sm text-gray-600">พาเลท</span>
+                </div>
+            </div>
+            <div class="mt-6 text-center">
+                <button id="quick-create-tfor-btn" class="px-6 py-3 bg-fuchsia-600 text-white rounded-lg font-semibold shadow-lg hover:bg-fuchsia-700 transition-all transform hover:scale-105">
+                    สร้าง TFOR
+                </button>
+            </div>
+        `;
+        
+        // Insert after the summary cards
+        if (summaryCards && summaryCards.nextSibling) {
+            mainMenuView.insertBefore(quickTforSection, summaryCards.nextSibling);
+        } else {
+            mainMenuView.appendChild(quickTforSection);
+        }
+        
+        // Add event listener for the quick create button
+        document.getElementById('quick-create-tfor-btn').addEventListener('click', createQuickTfor);
+    }
+    
+    // Function to create a TFOR from the quick form
+    async function createQuickTfor() {
+        const lpFront = document.getElementById('quick-lp-front').value.trim();
+        const lpBack = document.getElementById('quick-lp-back').value.trim();
+        const branch = document.getElementById('quick-branch').value;
+        const tforNumber = document.getElementById('quick-tfor-number').value.trim();
+        const palletCount = parseInt(document.getElementById('quick-pallet-count').value) || 1;
+        
+        // Validation
+        if (!lpFront || !lpBack || !branch || !tforNumber) {
+            showNotification('กรุณากรอกข้อมูลให้ครบถ้วน', false);
+            return;
+        }
+        
+        if (!/^\d{4}$/.test(lpBack)) {
+            showNotification('ทะเบียนรถด้านหลังต้องเป็นตัวเลข 4 ตัว', false);
+            return;
+        }
+        
+        // Show loading state
+        const button = document.getElementById('quick-create-tfor-btn');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<div class="loading-spinner w-5 h-5 border-white border-t-transparent rounded-full inline-block mr-2"></div> กำลังสร้าง...';
+        button.disabled = true;
+        
+        try {
+            const licensePlate = `${lpFront} ${lpBack}`;
+            const deliveryDate = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+            
+            // Create pallet numbers array
+            const palletNumbers = Array.from({ length: palletCount }, (_, i) => (i + 1).toString());
+            
+            // Create TFOR data
+            const tforData = {
+                deliveryDate,
+                licensePlate,
+                images: [], // No images for quick creation
+                isNoTFOR: false,
+                isNoLabel: false,
+                tforNumber,
+                branch,
+                palletNumbers,
+                palletCount,
+                palletNotes: 'สร้างจากฟอร์มด่วน',
+                linkedTfors: [],
+                checkedPallets: [],
+                receivedPallets: [],
+                isCompleted: false,
+                isReceived: false,
+                createdAt: serverTimestamp(),
+                createdByUid: currentUser.uid,
+                createdByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                isApproved: false,
+                approvedByUid: null,
+                approvedByName: null,
+                approvalDate: null,
+                approvalNotes: null,
+                checkStartTime: null,
+                checkEndTime: null,
+                receiveStartTime: null,
+                receiveEndTime: null,
+                editHistory: [],
+                priority: 'normal'
+            };
+            
+            // Save to Firestore
+            const newTransferRef = doc(collection(db, "transfers"));
+            await setDoc(newTransferRef, tforData);
+            
+            // Show success notification
+            showNotification('สร้าง TFOR สำเร็จ!');
+            
+            // Reset form
+            document.getElementById('quick-lp-front').value = '';
+            document.getElementById('quick-lp-back').value = '';
+            document.getElementById('quick-branch').value = '';
+            document.getElementById('quick-tfor-number').value = '';
+            document.getElementById('quick-pallet-count').value = '1';
+            
+            // Update summary
+            updateMainMenuSummary();
+            
+            // Add animation effect
+            const quickTforSection = document.querySelector('.quick-tfor-section');
+            quickTforSection.classList.add('animate-pulse');
+            setTimeout(() => {
+                quickTforSection.classList.remove('animate-pulse');
+            }, 1000);
+            
+        } catch (error) {
+            console.error("Error creating quick TFOR:", error);
+            showNotification('เกิดข้อผิดพลาดในการสร้าง TFOR', false);
+        } finally {
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
         }
     }
 });
