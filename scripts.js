@@ -457,10 +457,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const todaysPlanCount = allTransfersData.filter(t => t.scheduledDate === todayString).length;
         const completedTodayCount = completedTransfersData.filter(t => t.completionDate === todayString).length;
         
+        // แสดงรายการมีปัญหาทั้งหมด (ไม่กรองเฉพาะวันนี้)
+        const allIssues = Object.values(issuesData).flat();
+        
         // แสดงรายการมีปัญหาเฉพาะภายในวันนั้นๆ
-        const todayIssues = Object.values(issuesData)
-            .flat()
-            .filter(issue => issue.reportDate === todayString);
+        const todayIssues = allIssues.filter(issue => issue.reportDate === todayString);
         const issuesCount = todayIssues.length;
         
         document.getElementById('summary-todays-plan').textContent = todaysPlanCount;
@@ -1163,12 +1164,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // เพิ่ม event listener สำหรับปุ่มเปลี่ยนเดือน
         header.querySelector('#prev-month').addEventListener('click', () => {
             calendarPicker.remove();
-            showCalendarPickerForMonth(currentMonth - 1, currentYear);
+            const prevMonth = month - 1;
+            const prevYear = prevMonth < 0 ? year - 1 : year;
+            showCalendarPickerForMonth(prevMonth < 0 ? 11 : prevMonth, prevYear);
         });
         
         header.querySelector('#next-month').addEventListener('click', () => {
             calendarPicker.remove();
-            showCalendarPickerForMonth(currentMonth + 1, currentYear);
+            const nextMonth = month + 1;
+            const nextYear = nextMonth > 11 ? year + 1 : year;
+            showCalendarPickerForMonth(nextMonth > 11 ? 0 : nextMonth, nextYear);
         });
         
         // เพิ่ม event listener สำหรับการคลิกนอกปฏิทินเพื่อปิด
