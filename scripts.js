@@ -19,6 +19,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
+
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     const payload = {
@@ -81,6 +82,7 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
+
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -457,10 +459,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const todaysPlanCount = allTransfersData.filter(t => t.scheduledDate === todayString).length;
         const completedTodayCount = completedTransfersData.filter(t => t.completionDate === todayString).length;
         
+        // แสดงรายการมีปัญหาทั้งหมด (ไม่กรองเฉพาะวันนี้)
+        const allIssues = Object.values(issuesData).flat();
+        
         // แสดงรายการมีปัญหาเฉพาะภายในวันนั้นๆ
-        const todayIssues = Object.values(issuesData)
-            .flat()
-            .filter(issue => issue.reportDate === todayString);
+        const todayIssues = allIssues.filter(issue => issue.reportDate === todayString);
         const issuesCount = todayIssues.length;
         
         document.getElementById('summary-todays-plan').textContent = todaysPlanCount;
@@ -743,7 +746,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     isReceived: false,
                     createdAt: serverTimestamp(),
                     createdByUid: currentUser.uid,
-                    createdByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
+                    createdByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                    // เพิ่มฟิลด์ใหม่
+                    isApproved: false,              // สถานะการอนุมัติ
+                    approvedByUid: null,           // UID ของผู้อนุมัติ
+                    approvedByName: null,          // ชื่อผู้อนุมัติ
+                    approvalDate: null,            // วันที่อนุมัติ
+                    approvalNotes: null,           // หมายเหตุการอนุมัติ
+                    checkStartTime: null,          // เวลาเริ่มเช็คสินค้า
+                    checkEndTime: null,            // เวลาเสร็จสิ้นการเช็คสินค้า
+                    receiveStartTime: null,        // เวลาเริ่มรับสินค้า
+                    receiveEndTime: null,          // เวลาเสร็จสิ้นการรับสินค้า
+                    editHistory: [],               // ประวัติการแก้ไข
+                    priority: 'normal'             // ระดับความสำคัญ (normal, high, urgent)
                 };
                 const newTransferRef = doc(collection(db, "transfers"));
                 batch.set(newTransferRef, tforData);
@@ -794,6 +809,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
         const checkLog = currentTforData.checkLog || [];
         checkLog.push({ pallet: palletNum, user: currentUserProfile.firstName, timestamp: new Date().toISOString() });
+        
+        // บันทึกเวลาเริ่มต้นและสิ้นสุดการเช็คสินค้า
+        if (!currentTforData.checkStartTime && checkedPallets.length === 1) {
+            currentTforData.checkStartTime = new Date().toISOString();
+        }
+        if (isNowCompleted) {
+            currentTforData.checkEndTime = new Date().toISOString();
+        }
+        
         try {
             await updateDoc(transferDocRef, {
                 isCompleted: isNowCompleted,
@@ -801,7 +825,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 checkedPallets: checkedPallets,
                 lastCheckedByUid: currentUser.uid,
                 lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                checkLog: checkLog
+                checkLog: checkLog,
+                checkStartTime: currentTforData.checkStartTime,
+                checkEndTime: currentTforData.checkEndTime
             });
             
             // Log the action
@@ -813,6 +839,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (isNowCompleted) {
                 showNotification('เช็คสินค้าครบถ้วนแล้ว!');
+            }
+            
+            // อัปเดต progress tracking หากมี
+            if (document.getElementById('progress-bar')) {
+                updateProgressTracking();
             }
         } catch (error) {
             console.error("Error updating pallet check status: ", error);
@@ -838,6 +869,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const receiveLog = currentTforData.receiveLog || [];
         receiveLog.push({ pallet: palletNum, user: currentUserProfile.firstName, timestamp: new Date().toISOString() });
         
+        // บันทึกเวลาเริ่มต้นและสิ้นสุดการรับสินค้า
+        if (!currentTforData.receiveStartTime && receivedPallets.length === 1) {
+            currentTforData.receiveStartTime = new Date().toISOString();
+        }
+        if (isAllReceived) {
+            currentTforData.receiveEndTime = new Date().toISOString();
+        }
+        
         try {
             await updateDoc(transferDocRef, {
                 isReceived: isAllReceived,
@@ -845,7 +884,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 receivedPallets: receivedPallets,
                 lastReceivedByUid: currentUser.uid,
                 lastReceivedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                receiveLog: receiveLog
+                receiveLog: receiveLog,
+                receiveStartTime: currentTforData.receiveStartTime,
+                receiveEndTime: currentTforData.receiveEndTime
             });
             
             // Log the action
@@ -857,6 +898,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (isAllReceived) {
                 showNotification('รับสินค้าครบถ้วนแล้ว!');
+            }
+            
+            // อัปเดต progress tracking หากมี
+            if (document.getElementById('progress-bar')) {
+                updateProgressTracking();
             }
         } catch (error) {
             console.error("Error updating pallet receive status: ", error);
@@ -879,6 +925,12 @@ document.addEventListener('DOMContentLoaded', () => {
             receiveLog.push({ pallet: palletNum, user: currentUserProfile.firstName, timestamp: new Date().toISOString() });
         });
         
+        // บันทึกเวลาเริ่มต้นและสิ้นสุดการรับสินค้า
+        if (!currentTforData.receiveStartTime) {
+            currentTforData.receiveStartTime = new Date().toISOString();
+        }
+        currentTforData.receiveEndTime = new Date().toISOString();
+        
         try {
             await updateDoc(transferDocRef, {
                 isReceived: true,
@@ -886,7 +938,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 receivedPallets: receivedPallets,
                 lastReceivedByUid: currentUser.uid,
                 lastReceivedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                receiveLog: receiveLog
+                receiveLog: receiveLog,
+                receiveStartTime: currentTforData.receiveStartTime,
+                receiveEndTime: currentTforData.receiveEndTime
             });
             
             // Log the action
@@ -896,6 +950,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             showNotification('รับสินค้าครบถ้วนแล้ว!');
+            
+            // อัปเดต progress tracking หากมี
+            if (document.getElementById('progress-bar')) {
+                updateProgressTracking();
+            }
         } catch (error) {
             console.error("Error updating receive status: ", error);
             showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
@@ -1163,12 +1222,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // เพิ่ม event listener สำหรับปุ่มเปลี่ยนเดือน
         header.querySelector('#prev-month').addEventListener('click', () => {
             calendarPicker.remove();
-            showCalendarPickerForMonth(currentMonth - 1, currentYear);
+            const prevMonth = currentMonth - 1;
+            const prevYear = prevMonth < 0 ? currentYear - 1 : currentYear;
+            showCalendarPickerForMonth(prevMonth < 0 ? 11 : prevMonth, prevYear);
         });
         
         header.querySelector('#next-month').addEventListener('click', () => {
             calendarPicker.remove();
-            showCalendarPickerForMonth(currentMonth + 1, currentYear);
+            const nextMonth = currentMonth + 1;
+            const nextYear = nextMonth > 11 ? currentYear + 1 : currentYear;
+            showCalendarPickerForMonth(nextMonth > 11 ? 0 : nextMonth, nextYear);
         });
         
         // เพิ่ม event listener สำหรับการคลิกนอกปฏิทินเพื่อปิด
@@ -1441,6 +1504,12 @@ document.addEventListener('DOMContentLoaded', () => {
             renderIssueFormForTransfer();
         });
         issuePalletButtonsContainer.appendChild(issueBtn);
+        
+        // เพิ่มฟีเจอร์ใหม่
+        addProgressTracking();
+        addPerformanceTimer();
+        addEditHistory();
+        addApprovalSystem();
     }
     
     function renderIssueFormForTransfer() {
@@ -2384,6 +2453,9 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
+        
+        // เพิ่มข้อมูลเชิงลึก
+        addInsightfulAnalytics();
     }
     
     function showStatsDetailModal(title, items) {
@@ -3199,6 +3271,9 @@ document.addEventListener('DOMContentLoaded', () => {
             renderRecentActivity();
             renderProfileScores();
             renderProfileStarPoints();
+            
+            // เพิ่มสถิติการใช้งาน
+            addUsageStatistics();
         }
     }
     
@@ -3565,4 +3640,839 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error logging action:", error);
         }
     }
+    
+    // เพิ่มฟังก์ชันใหม่
+    
+    // 1. การแจ้งเตือนแบบเรียลไทม์
+    function setupRealtimeNotifications() {
+        // แจ้งเตือนเมื่อมี TFOR ใหม่
+        onSnapshot(collection(db, "transfers"), (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const data = change.doc.data();
+                    if (data.createdByUid !== currentUser.uid) {
+                        showNotification(`มี TFOR ใหม่: ...${data.tforNumber} จาก ${data.branch}`);
+                    }
+                }
+            });
+        });
+
+        // แจ้งเตือนเมื่อใกล้ถึงกำหนดเช็ค
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        const overdueQuery = query(
+            collection(db, "transfers"),
+            where("scheduledDate", "<=", tomorrow.toLocaleDateString('th-TH')),
+            where("isCompleted", "==", false)
+        );
+        
+        onSnapshot(overdueQuery, (snapshot) => {
+            if (snapshot.size > 0) {
+                showNotification(`มี ${snapshot.size} รายการที่ใกล้ถึงกำหนดเช็ค`, false);
+            }
+        });
+    }
+    
+    // 2. การแสดงสรุปผล
+    function enhanceDashboard() {
+        // เพิ่มส่วนแสดง TFOR ที่ต้องดำเนินการด่วน
+        const urgentContainer = document.createElement('div');
+        urgentContainer.className = 'bg-white rounded-2xl shadow-lg p-6 mb-8';
+        urgentContainer.innerHTML = `
+            <h3 class="text-xl font-bold text-red-600 mb-4">ดำเนินการด่วน</h3>
+            <div id="urgent-tasks-container"></div>
+        `;
+        
+        // คำนวณและแสดงประสิทธิภาพรายวัน
+        const performanceContainer = document.createElement('div');
+        performanceContainer.className = 'bg-white rounded-2xl shadow-lg p-6 mb-8';
+        performanceContainer.innerHTML = `
+            <h3 class="text-xl font-bold text-blue-600 mb-4">ประสิทธิภาพวันนี้</h3>
+            <div id="daily-performance-container"></div>
+        `;
+        
+        // แทรกเข้าไปในหน้า dashboard
+        const mainContainer = document.querySelector('main');
+        mainContainer.insertBefore(performanceContainer, mainContainer.children[1]);
+        mainContainer.insertBefore(urgentContainer, mainContainer.children[1]);
+        
+        updateUrgentTasks();
+        updateDailyPerformance();
+    }
+    
+    function updateUrgentTasks() {
+        const container = document.getElementById('urgent-tasks-container');
+        if (!container) return;
+        
+        // หา TFOR ที่ใกล้ถึงกำหนดเช็ค
+        const today = new Date();
+        const overdueItems = allTransfersData.filter(t => {
+            const tDate = parseThaiDate(t.deliveryDate);
+            if (!tDate) return false;
+            const dueDate = calculateDueDate(tDate);
+            return dueDate < today && !t.isCompleted;
+        });
+        
+        if (overdueItems.length === 0) {
+            container.innerHTML = '<p class="text-gray-500">ไม่มีรายการด่วน</p>';
+            return;
+        }
+        
+        container.innerHTML = overdueItems.map(item => `
+            <div class="p-3 bg-red-50 rounded-lg mb-2">
+                <p class="font-semibold">TFOR: ...${item.tforNumber} (${item.branch})</p>
+                <p class="text-sm text-red-600">เกินกำหนดแล้ว</p>
+            </div>
+        `).join('');
+    }
+    
+    function updateDailyPerformance() {
+        const container = document.getElementById('daily-performance-container');
+        if (!container) return;
+        
+        const today = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        // นับจำนวน TFOR ที่เช็คเสร็จในวันนี้
+        const completedToday = completedTransfersData.filter(t => t.completionDate === today).length;
+        
+        // นับจำนวน TFOR ที่วางแผนไว้ในวันนี้
+        const plannedToday = allTransfersData.filter(t => t.scheduledDate === today).length;
+        
+        container.innerHTML = `
+            <div class="grid grid-cols-2 gap-4">
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <p class="text-2xl font-bold">${plannedToday}</p>
+                    <p class="text-sm text-gray-600">วางแผนไว้</p>
+                </div>
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <p class="text-2xl font-bold">${completedToday}</p>
+                    <p class="text-sm text-gray-600">เสร็จสิ้น</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 3. การค้นหาขั้นสูง
+    function addAdvancedSearch() {
+        const searchContainer = document.createElement('div');
+        searchContainer.className = 'bg-white rounded-2xl shadow-lg p-6 mb-8';
+        searchContainer.innerHTML = `
+            <h3 class="text-xl font-bold mb-4">ค้นหาขั้นสูง</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ช่วงวันที่</label>
+                    <input type="date" id="search-date-from" class="w-full rounded-md border-gray-300 shadow-sm">
+                    <input type="date" id="search-date-to" class="w-full rounded-md border-gray-300 shadow-sm mt-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">สาขา</label>
+                    <select id="search-branch" class="w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="">ทุกสาขา</option>
+                        ${branches.map(branch => `<option value="${branch}">${branch}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
+                    <select id="search-status" class="w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="">ทุกสถานะ</option>
+                        <option value="pending">รอดำเนินการ</option>
+                        <option value="completed">เสร็จสิ้น</option>
+                        <option value="issues">มีปัญหา</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4">
+                <button id="advanced-search-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg">ค้นหา</button>
+                <button id="clear-search-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg ml-2">ล้าง</button>
+            </div>
+            <div id="search-results" class="mt-6"></div>
+        `;
+        
+        const mainContainer = document.querySelector('main');
+        mainContainer.insertBefore(searchContainer, mainContainer.children[1]);
+        
+        // เพิ่ม event listeners
+        document.getElementById('advanced-search-btn').addEventListener('click', performAdvancedSearch);
+        document.getElementById('clear-search-btn').addEventListener('click', clearAdvancedSearch);
+    }
+    
+    function performAdvancedSearch() {
+        const dateFrom = document.getElementById('search-date-from').value;
+        const dateTo = document.getElementById('search-date-to').value;
+        const branch = document.getElementById('search-branch').value;
+        const status = document.getElementById('search-status').value;
+        
+        let results = [...allTransfersData, ...completedTransfersData];
+        
+        // กรองตามวันที่
+        if (dateFrom) {
+            const fromDate = new Date(dateFrom);
+            results = results.filter(t => {
+                const tDate = parseThaiDate(t.deliveryDate);
+                return tDate && tDate >= fromDate;
+            });
+        }
+        
+        if (dateTo) {
+            const toDate = new Date(dateTo);
+            toDate.setHours(23, 59, 59, 999); // ถึงสิ้นวัน
+            results = results.filter(t => {
+                const tDate = parseThaiDate(t.deliveryDate);
+                return tDate && tDate <= toDate;
+            });
+        }
+        
+        // กรองตามสาขา
+        if (branch) {
+            results = results.filter(t => t.branch === branch);
+        }
+        
+        // กรองตามสถานะ
+        if (status === 'pending') {
+            results = results.filter(t => !t.isCompleted);
+        } else if (status === 'completed') {
+            results = results.filter(t => t.isCompleted);
+        } else if (status === 'issues') {
+            // หา TFOR ที่มีปัญหา
+            const issueIds = Object.values(issuesData).flat().map(i => i.transferId);
+            results = results.filter(t => issueIds.includes(t.id));
+        }
+        
+        displaySearchResults(results);
+    }
+    
+    function clearAdvancedSearch() {
+        document.getElementById('search-date-from').value = '';
+        document.getElementById('search-date-to').value = '';
+        document.getElementById('search-branch').value = '';
+        document.getElementById('search-status').value = '';
+        document.getElementById('search-results').innerHTML = '';
+    }
+    
+    function displaySearchResults(results) {
+        const container = document.getElementById('search-results');
+        if (!container) return;
+        
+        if (results.length === 0) {
+            container.innerHTML = '<p class="text-gray-500">ไม่พบข้อมูลที่ตรงตามเงื่อนไข</p>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <h4 class="font-semibold mb-3">ผลการค้นหา (${results.length} รายการ)</h4>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="px-4 py-2 text-left">วันที่</th>
+                            <th class="px-4 py-2 text-left">TFOR</th>
+                            <th class="px-4 py-2 text-left">สาขา</th>
+                            <th class="px-4 py-2 text-left">ทะเบียน</th>
+                            <th class="px-4 py-2 text-left">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${results.map(t => `
+                            <tr class="border-b hover:bg-gray-50 cursor-pointer" onclick="viewTransferDetails('${t.id}')">
+                                <td class="px-4 py-2">${t.deliveryDate}</td>
+                                <td class="px-4 py-2">...${t.tforNumber}</td>
+                                <td class="px-4 py-2">${t.branch}</td>
+                                <td class="px-4 py-2">${t.licensePlate}</td>
+                                <td class="px-4 py-2">
+                                    ${t.isCompleted ? 
+                                        '<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">เสร็จสิ้น</span>' : 
+                                        '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">รอดำเนินการ</span>'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    
+    function viewTransferDetails(transferId) {
+        const transfer = [...allTransfersData, ...completedTransfersData].find(t => t.id === transferId);
+        if (transfer) {
+            currentTforData = transfer;
+            showMainView(views.transfers);
+            renderCheckView();
+            showSubView(checkView);
+        }
+    }
+    
+    // 4. การบันทึกอัตโนมัติ
+    function setupAutoSave() {
+        let autoSaveTimer;
+        const formInputs = document.querySelectorAll('#inbound-form input, #inbound-form select, #inbound-form textarea');
+        
+        formInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(() => {
+                    saveFormDataLocally();
+                    showNotification('บันทึกข้อมูลชั่วคราวแล้ว', true);
+                }, 2000);
+            });
+        });
+        
+        // โหลดข้อมูลที่บันทึกไว้เมื่อเปิดหน้าฟอร์ม
+        loadSavedFormData();
+    }
+
+    function saveFormDataLocally() {
+        const formData = {
+            lpFront: document.getElementById('lp-front').value,
+            lpBack: document.getElementById('lp-back').value,
+            deliveryDate: document.getElementById('delivery-date').value,
+            tforBlocks: []
+        };
+        
+        document.querySelectorAll('.tfor-block').forEach(block => {
+            const blockData = {
+                tforNumber: block.querySelector('input[type="text"][maxlength="4"]').value,
+                branch: block.querySelector('select').value,
+                palletNumbers: block.querySelector('.pallet-count-input').value,
+                palletNotes: block.querySelector('.pallet-notes').value
+            };
+            formData.tforBlocks.push(blockData);
+        });
+        
+        localStorage.setItem('inboundFormData', JSON.stringify(formData));
+    }
+
+    function loadSavedFormData() {
+        const savedData = localStorage.getItem('inboundFormData');
+        if (savedData) {
+            const formData = JSON.parse(savedData);
+            
+            document.getElementById('lp-front').value = formData.lpFront || '';
+            document.getElementById('lp-back').value = formData.lpBack || '';
+            
+            // โหลดข้อมูล TFOR blocks
+            formData.tforBlocks.forEach(blockData => {
+                const tforBlock = document.createElement('div');
+                // ... สร้าง block จากข้อมูลที่บันทึกไว้
+            });
+        }
+    }
+    
+    // 5. การติดตามความคืบหน้า
+    function addProgressTracking() {
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'bg-white rounded-2xl shadow-lg p-6 mb-8';
+        progressContainer.innerHTML = `
+            <h3 class="text-xl font-bold mb-4">ความคืบหน้าการทำงาน</h3>
+            <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
+                <div id="progress-bar" class="bg-blue-600 h-4 rounded-full" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span>เริ่มต้น</span>
+                <span id="progress-text">0%</span>
+                <span>เสร็จสิ้น</span>
+            </div>
+            <div id="progress-steps" class="mt-4 grid grid-cols-4 gap-4"></div>
+        `;
+        
+        const checkSection = document.getElementById('check-section');
+        checkSection.parentNode.insertBefore(progressContainer, checkSection);
+        
+        updateProgressTracking();
+    }
+
+    function updateProgressTracking() {
+        const steps = [
+            { name: 'รับข้อมูล', completed: true },
+            { name: 'เช็คสินค้า', completed: currentTforData.checkedPallets?.length > 0 },
+            { name: 'รับสินค้า', completed: currentTforData.receivedPallets?.length > 0 },
+            { name: 'เสร็จสิ้น', completed: currentTforData.isCompleted && currentTforData.isReceived }
+        ];
+        
+        const completedSteps = steps.filter(step => step.completed).length;
+        const progressPercentage = (completedSteps / steps.length) * 100;
+        
+        document.getElementById('progress-bar').style.width = `${progressPercentage}%`;
+        document.getElementById('progress-text').textContent = `${Math.round(progressPercentage)}%`;
+        
+        const stepsContainer = document.getElementById('progress-steps');
+        stepsContainer.innerHTML = steps.map((step, index) => `
+            <div class="text-center ${step.completed ? 'text-green-600' : 'text-gray-400'}">
+                <div class="w-8 h-8 rounded-full ${step.completed ? 'bg-green-500' : 'bg-gray-300'} mx-auto mb-2 flex items-center justify-center text-white font-bold">
+                    ${index + 1}
+                </div>
+                <div class="text-sm">${step.name}</div>
+            </div>
+        `).join('');
+    }
+    
+    // 6. ตัวจับเวลาประสิทธิภาพ
+    function addPerformanceTimer() {
+        const timerContainer = document.createElement('div');
+        timerContainer.className = 'bg-white rounded-2xl shadow-lg p-6 mb-8';
+        timerContainer.innerHTML = `
+            <h3 class="text-xl font-bold mb-4">เวลาที่ใช้ในการทำงาน</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-blue-600" id="check-time">00:00:00</div>
+                    <div class="text-sm text-gray-600">เวลาเช็คสินค้า</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-purple-600" id="receive-time">00:00:00</div>
+                    <div class="text-sm text-gray-600">เวลารับสินค้า</div>
+                </div>
+            </div>
+        `;
+        
+        const checkSection = document.getElementById('check-section');
+        checkSection.parentNode.insertBefore(timerContainer, checkSection);
+        
+        // เริ่มจับเวลา
+        startPerformanceTimer();
+    }
+
+    let checkStartTime, receiveStartTime, checkTimer, receiveTimer;
+
+    function startPerformanceTimer() {
+        // จับเวลาเมื่อเริ่มเช็คสินค้า
+        if (currentTforData.checkLog && currentTforData.checkLog.length > 0) {
+            checkStartTime = new Date(currentTforData.checkLog[0].timestamp);
+        } else {
+            checkStartTime = new Date();
+        }
+        
+        // จับเวลาเมื่อเริ่มรับสินค้า
+        if (currentTforData.receiveLog && currentTforData.receiveLog.length > 0) {
+            receiveStartTime = new Date(currentTforData.receiveLog[0].timestamp);
+        }
+        
+        // อัปเดตตัวจับเวลาทุกๆ 1 วินาที
+        updateTimers();
+    }
+
+    function updateTimers() {
+        // อัปเดตเวลาเช็คสินค้า
+        if (checkStartTime) {
+            const checkElapsed = new Date() - checkStartTime;
+            document.getElementById('check-time').textContent = formatTime(checkElapsed);
+        }
+        
+        // อัปเดตเวลารับสินค้า
+        if (receiveStartTime) {
+            const receiveElapsed = new Date() - receiveStartTime;
+            document.getElementById('receive-time').textContent = formatTime(receiveElapsed);
+        }
+        
+        // อัปเดตทุกๆ 1 วินาที
+        setTimeout(updateTimers, 1000);
+    }
+
+    function formatTime(milliseconds) {
+        const totalSeconds = Math.floor(milliseconds / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // 7. ประวัติการแก้ไข
+    function addEditHistory() {
+        const historyContainer = document.createElement('div');
+        historyContainer.className = 'bg-white rounded-2xl shadow-lg p-6 mb-8';
+        historyContainer.innerHTML = `
+            <h3 class="text-xl font-bold mb-4">ประวัติการแก้ไข</h3>
+            <div id="edit-history-container" class="space-y-3 max-h-60 overflow-y-auto"></div>
+        `;
+        
+        const commentSection = document.getElementById('comment-section');
+        commentSection.parentNode.insertBefore(historyContainer, commentSection);
+        
+        updateEditHistory();
+    }
+
+    function updateEditHistory() {
+        const historyContainer = document.getElementById('edit-history-container');
+        const history = [];
+        
+        // เพิ่มประวัติการสร้าง
+        if (currentTforData.createdAt) {
+            history.push({
+                action: 'สร้างรายการ',
+                user: currentTforData.createdByName,
+                timestamp: currentTforData.createdAt,
+                details: `สร้าง TFOR ...${currentTforData.tforNumber}`
+            });
+        }
+        
+        // เพิ่มประวัติการเช็คสินค้า
+        if (currentTforData.checkLog) {
+            currentTforData.checkLog.forEach(log => {
+                history.push({
+                    action: 'เช็คสินค้า',
+                    user: log.user,
+                    timestamp: new Date(log.timestamp),
+                    details: `เช็คพาเลทที่ ${log.pallet}`
+                });
+            });
+        }
+        
+        // เพิ่มประวัติการรับสินค้า
+        if (currentTforData.receiveLog) {
+            currentTforData.receiveLog.forEach(log => {
+                history.push({
+                    action: 'รับสินค้า',
+                    user: log.user,
+                    timestamp: new Date(log.timestamp),
+                    details: `รับพาเลทที่ ${log.pallet}`
+                });
+            });
+        }
+        
+        // เรียงลำดับตามเวลา
+        history.sort((a, b) => b.timestamp - a.timestamp);
+        
+        // แสดงประวัติ
+        historyContainer.innerHTML = history.length > 0 ? history.map(item => `
+            <div class="p-3 bg-gray-50 rounded-lg">
+                <div class="flex justify-between">
+                    <span class="font-semibold">${item.action}</span>
+                    <span class="text-sm text-gray-500">${formatDate(item.timestamp)}</span>
+                </div>
+                <div class="text-sm text-gray-600">โดย: ${item.user}</div>
+                <div class="text-sm">${item.details}</div>
+            </div>
+        `).join('') : '<p class="text-gray-500 text-center">ไม่มีประวัติการแก้ไข</p>';
+    }
+
+    function formatDate(timestamp) {
+        const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+        return date.toLocaleDateString('th-TH', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    
+    // 8. สถิติการใช้งาน
+    function addUsageStatistics() {
+        const statsContainer = document.createElement('div');
+        statsContainer.className = 'bg-white rounded-2xl shadow-lg p-8';
+        statsContainer.innerHTML = `
+            <h2 class="text-xl font-bold mb-6 text-gray-800">สถิติการใช้งาน</h2>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="text-center">
+                    <p class="text-4xl font-bold text-blue-500" id="user-created-count">0</p>
+                    <p class="text-gray-600">สร้าง TFOR</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-4xl font-bold text-green-500" id="user-checked-count">0</p>
+                    <p class="text-gray-600">เช็คสินค้า</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-4xl font-bold text-purple-500" id="user-received-count">0</p>
+                    <p class="text-gray-600">รับสินค้า</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-4xl font-bold text-red-500" id="user-issues-count">0</p>
+                    <p class="text-gray-600">รายงานปัญหา</p>
+                </div>
+            </div>
+            <div class="mt-6">
+                <h3 class="text-lg font-semibold mb-3">กิจกรรมล่าสุด</h3>
+                <div id="user-recent-activity" class="space-y-2 max-h-40 overflow-y-auto"></div>
+            </div>
+        `;
+        
+        const profileView = document.getElementById('profile-view');
+        const mainContainer = profileView.querySelector('main');
+        mainContainer.appendChild(statsContainer);
+        
+        updateUserUsageStatistics();
+    }
+
+    function updateUserUsageStatistics() {
+        const allUserTransfers = [...allTransfersData, ...completedTransfersData];
+        const allUserIssues = Object.values(issuesData).flat();
+        
+        const createdCount = allUserTransfers.filter(t => t.createdByUid === currentUser.uid).length;
+        const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === currentUser.uid).length;
+        const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === currentUser.uid).length;
+        const issuesCount = allUserIssues.filter(i => i.reportedByUid === currentUser.uid).length;
+        
+        document.getElementById('user-created-count').textContent = createdCount;
+        document.getElementById('user-checked-count').textContent = checkedCount;
+        document.getElementById('user-received-count').textContent = receivedCount;
+        document.getElementById('user-issues-count').textContent = issuesCount;
+        
+        // แสดงกิจกรรมล่าสุด
+        const recentActivity = document.getElementById('user-recent-activity');
+        // ... โค้ดแสดงกิจกรรมล่าสุดคล้ายกับที่มีอยู่แล้ว
+    }
+    
+    // 9. ระบบอนุมัติ
+    function addApprovalSystem() {
+        const approvalContainer = document.createElement('div');
+        approvalContainer.className = 'bg-white rounded-2xl shadow-lg p-6 mb-8';
+        approvalContainer.innerHTML = `
+            <h3 class="text-xl font-bold mb-4">การอนุมัติงาน</h3>
+            <div id="approval-status" class="mb-4">
+                <span class="px-3 py-1 rounded-full text-sm font-semibold ${currentTforData.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                    ${currentTforData.isApproved ? 'อนุมัติแล้ว' : 'รอการอนุมัติ'}
+                </span>
+            </div>
+            <div id="approval-details" class="mb-4">
+                ${currentTforData.isApproved ? `
+                    <p class="text-sm text-gray-600">อนุมัติโดย: ${currentTforData.approvedByName}</p>
+                    <p class="text-sm text-gray-600">วันที่อนุมัติ: ${currentTforData.approvalDate}</p>
+                    ${currentTforData.approvalNotes ? `<p class="text-sm text-gray-600">หมายเหตุ: ${currentTforData.approvalNotes}</p>` : ''}
+                ` : ''}
+            </div>
+            <div id="approval-actions" class="admin-supervisor-only">
+                <button id="approve-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg mr-2">อนุมัติ</button>
+                <button id="reject-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg">ไม่อนุมัติ</button>
+            </div>
+        `;
+        
+        const checkSection = document.getElementById('check-section');
+        checkSection.parentNode.insertBefore(approvalContainer, checkSection);
+        
+        // เพิ่ม event listeners
+        document.getElementById('approve-btn')?.addEventListener('click', () => showApprovalModal(true));
+        document.getElementById('reject-btn')?.addEventListener('click', () => showApprovalModal(false));
+    }
+
+    function showApprovalModal(isApprove) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                <h3 class="text-xl font-bold mb-4">${isApprove ? 'อนุมัติงาน' : 'ไม่อนุมัติงาน'}</h3>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ</label>
+                    <textarea id="approval-notes" rows="3" class="w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button id="cancel-approval-btn" class="px-4 py-2 bg-gray-200 rounded-lg">ยกเลิก</button>
+                    <button id="confirm-approval-btn" class="px-4 py-2 ${isApprove ? 'bg-green-600' : 'bg-red-600'} text-white rounded-lg">
+                        ${isApprove ? 'อนุมัติ' : 'ไม่อนุมัติ'}
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Event listeners
+        modal.querySelector('#cancel-approval-btn').addEventListener('click', () => modal.remove());
+        modal.querySelector('#confirm-approval-btn').addEventListener('click', () => {
+            const notes = modal.querySelector('#approval-notes').value;
+            saveApproval(isApprove, notes);
+            modal.remove();
+        });
+    }
+
+    async function saveApproval(isApproved, notes) {
+        try {
+            await updateDoc(doc(db, "transfers", currentTforData.id), {
+                isApproved: isApproved,
+                approvedByUid: currentUser.uid,
+                approvedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                approvalDate: new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
+                approvalNotes: notes
+            });
+            
+            showNotification(isApproved ? 'อนุมัติงานสำเร็จ' : 'ไม่อนุมัติงานสำเร็จ');
+            
+            // อัปเดตข้อมูลในหน้า
+            currentTforData.isApproved = isApproved;
+            currentTforData.approvedByUid = currentUser.uid;
+            currentTforData.approvedByName = `${currentUserProfile.firstName} ${currentUserProfile.lastName}`;
+            currentTforData.approvalDate = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+            currentTforData.approvalNotes = notes;
+            
+            // รีเฟรชหน้า
+            renderCheckView();
+        } catch (error) {
+            showNotification('เกิดข้อผิดพลาดในการบันทึก', false);
+            console.error("Error saving approval:", error);
+        }
+    }
+    
+    // 10. การวิเคราะห์ข้อมูลเชิงลึก
+    function addInsightfulAnalytics() {
+        const analyticsContainer = document.createElement('div');
+        analyticsContainer.className = 'bg-white rounded-2xl shadow-lg p-6 mb-8';
+        analyticsContainer.innerHTML = `
+            <h3 class="text-xl font-bold mb-4">ข้อมูลเชิงลึก</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-semibold mb-2">ปัญหาที่พบบ่อยที่สุด</h4>
+                    <div id="common-issues-chart" class="h-64"></div>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-2">ประสิทธิภาพตามสาขา</h4>
+                    <div id="branch-performance-chart" class="h-64"></div>
+                </div>
+            </div>
+            <div class="mt-6">
+                <h4 class="font-semibold mb-2">ข้อมูลเชิงลึก</h4>
+                <div id="insights-container" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            </div>
+        `;
+        
+        const chartsContainer = document.getElementById('charts-container');
+        chartsContainer.parentNode.insertBefore(analyticsContainer, chartsContainer);
+        
+        updateInsightfulAnalytics();
+    }
+
+    function updateInsightfulAnalytics() {
+        // วิเคราะห์ปัญหาที่พบบ่อยที่สุด
+        const allIssues = Object.values(issuesData).flat();
+        const issueTypesCount = {};
+        
+        allIssues.forEach(issue => {
+            (issue.issueTypes || []).forEach(type => {
+                issueTypesCount[type] = (issueTypesCount[type] || 0) + 1;
+            });
+        });
+        
+        // สร้างกราฟปัญหาที่พบบ่อยที่สุด
+        const commonIssuesCtx = document.getElementById('common-issues-chart');
+        if (commonIssuesCtx) {
+            new Chart(commonIssuesCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(issueTypesCount),
+                    datasets: [{
+                        label: 'จำนวนครั้ง',
+                        data: Object.values(issueTypesCount),
+                        backgroundColor: '#ef4444'
+                    }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true } },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        // วิเคราะห์ประสิทธิภาพตามสาขา
+        const branchPerformance = {};
+        const allTransfers = [...allTransfersData, ...completedTransfersData];
+        
+        allTransfers.forEach(transfer => {
+            if (!branchPerformance[transfer.branch]) {
+                branchPerformance[transfer.branch] = {
+                    total: 0,
+                    completed: 0,
+                    issues: 0
+                };
+            }
+            
+            branchPerformance[transfer.branch].total++;
+            
+            if (transfer.isCompleted) {
+                branchPerformance[transfer.branch].completed++;
+            }
+            
+            // นับปัญหาที่เกี่ยวข้องกับ TFOR นี้
+            const transferIssues = allIssues.filter(issue => issue.transferId === transfer.id);
+            branchPerformance[transfer.branch].issues += transferIssues.length;
+        });
+        
+        // คำนวณอัตราการเสร็จสิ้นตามสาขา
+        const branchCompletionRates = {};
+        Object.keys(branchPerformance).forEach(branch => {
+            const perf = branchPerformance[branch];
+            branchCompletionRates[branch] = perf.total > 0 ? (perf.completed / perf.total) * 100 : 0;
+        });
+        
+        // สร้างกราฟประสิทธิภาพตามสาขา
+        const branchPerformanceCtx = document.getElementById('branch-performance-chart');
+        if (branchPerformanceCtx) {
+            new Chart(branchPerformanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(branchCompletionRates),
+                    datasets: [{
+                        label: 'อัตราการเสร็จสิ้น (%)',
+                        data: Object.values(branchCompletionRates),
+                        backgroundColor: '#22c55e'
+                    }]
+                },
+                options: {
+                    scales: { 
+                        y: { 
+                            beginAtZero: true,
+                            max: 100
+                        } 
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        // สร้างข้อมูลเชิงลึก
+        const insightsContainer = document.getElementById('insights-container');
+        const insights = [];
+        
+        // หาสาขาที่มีประสิทธิภาพสูงสุด
+        const bestBranch = Object.keys(branchCompletionRates).reduce((a, b) => 
+            branchCompletionRates[a] > branchCompletionRates[b] ? a : b
+        );
+        insights.push({
+            title: 'สาขาที่มีประสิทธิภาพสูงสุด',
+            value: `${bestBranch} (${branchCompletionRates[bestBranch].toFixed(1)}%)`,
+            color: 'text-green-600'
+        });
+        
+        // หาสาขาที่มีปัญหามากที่สุด
+        const worstBranch = Object.keys(branchPerformance).reduce((a, b) => 
+            branchPerformance[a].issues > branchPerformance[b].issues ? a : b
+        );
+        insights.push({
+            title: 'สาขาที่มีปัญหามากที่สุด',
+            value: `${worstBranch} (${branchPerformance[worstBranch].issues} ปัญหา)`,
+            color: 'text-red-600'
+        });
+        
+        // หาปัญหาที่พบบ่อยที่สุด
+        const mostCommonIssue = Object.keys(issueTypesCount).reduce((a, b) => 
+            issueTypesCount[a] > issueTypesCount[b] ? a : b
+        );
+        insights.push({
+            title: 'ปัญหาที่พบบ่อยที่สุด',
+            value: `${mostCommonIssue} (${issueTypesCount[mostCommonIssue]} ครั้ง)`,
+            color: 'text-yellow-600'
+        });
+        
+        // แสดงข้อมูลเชิงลึก
+        insightsContainer.innerHTML = insights.map(insight => `
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <p class="text-sm text-gray-600">${insight.title}</p>
+                <p class="text-lg font-bold ${insight.color}">${insight.value}</p>
+            </div>
+        `).join('');
+    }
+    
+    // เรียกใช้ฟังก์ชันใหม่ๆ
+    setupRealtimeNotifications();
+    enhanceDashboard();
+    addAdvancedSearch();
+    setupAutoSave();
+    
+    // Event listeners สำหรับปุ่มค้นหาขั้นสูง
+    document.getElementById('advanced-search-btn')?.addEventListener('click', performAdvancedSearch);
+    document.getElementById('clear-search-btn')?.addEventListener('click', clearAdvancedSearch);
+    
+    // Event listeners สำหรับปุ่มอนุมัติ
+    document.getElementById('approve-btn')?.addEventListener('click', () => showApprovalModal(true));
+    document.getElementById('reject-btn')?.addEventListener('click', () => showApprovalModal(false));
 });
