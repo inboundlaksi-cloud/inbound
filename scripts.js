@@ -3,7 +3,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 // Firestore Database
-import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 // Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
@@ -39,7 +39,7 @@ async function callGeminiAPI(prompt) {
                 threshold: "BLOCK_NONE"
             },
             {
-                category: "HARM_CATEGORY_HATE_SPEECH", 
+                category: "HARM_CATEGORY_HATE_SPEECH",
                 threshold: "BLOCK_NONE"
             },
             {
@@ -81,13 +81,45 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
+
+// Global state and UI elements
+let currentChartInstances = {};
+let isAdmin = false;
+let currentUser = null;
+let currentUserProfile = null;
+let allUsers = [];
+let pendingUsers = [];
+let allScores = [];
+let allStarPoints = [];
+let allLogs = [];
+let unsubscribeUsers = null;
+let unsubscribeTransfers = null;
+let unsubscribeIssues = null;
+let unsubscribeScores = null;
+let unsubscribeStarPoints = null;
+let unsubscribeLogs = null;
+let allTransfersData = [];
+let completedTransfersData = [];
+let issuesData = {};
+let currentTforData = null;
+let previousView = null;
+let confirmCallback = null;
+let uploadedImagesBase64 = [];
+let newProfilePicBase64 = null;
+
+const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+const thaiMonthMap = thaiMonths.reduce((map, month, i) => { map[month] = i; return map; }, {});
+const branches = ['WH.40 (NDC)', 'WH.61 Chiangmai', 'WH.62 Suratthani', 'WH.63 Nakhon Ratchasima', 'WH.64 Leamchabang', 'WH.65 Udon Thani', 'WH.66 Phitsanulok', 'WH.67 Ratchaburi', 'WH.68 Hat Yai'];
+
+
+// --- CORE APPLICATION LOGIC ---
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
     if (loadingContainer) {
         loadingContainer.style.display = 'none';
     }
-    
+
     const views = {
         loginRegister: document.getElementById('login-register-view'),
         mainMenu: document.getElementById('main-menu-view'),
@@ -98,9 +130,10 @@ document.addEventListener('DOMContentLoaded', () => {
         todaysPlan: document.getElementById('todays-plan-view'),
         kpi: document.getElementById('kpi-view'),
         profile: document.getElementById('profile-view'),
-        checkProduct: document.getElementById('check-product-view')
+        checkProduct: document.getElementById('check-product-view'),
+        documentation: document.getElementById('documentation-view') // Added documentation view
     };
-    
+
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const loginTab = document.getElementById('login-tab');
@@ -131,27 +164,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const profilePicPreview = document.getElementById('profile-pic-preview');
     const defaultAvatarContainer = document.getElementById('default-avatar-container');
     const backupModal = document.getElementById('backup-modal');
-    let currentChartInstances = {};
-    let isAdmin = false;
-    let currentUser = null;
-    let currentUserProfile = null;
-    let allUsers = [];
-    let allScores = [];
-    let allStarPoints = [];
-    let unsubscribeUsers = null;
-    let unsubscribeTransfers = null;
-    let unsubscribeIssues = null;
-    let unsubscribeScores = null;
-    let unsubscribeStarPoints = null;
-    let allTransfersData = [];
-    let completedTransfersData = [];
-    let issuesData = {};
-    let currentTforData = null;
-    let previousView = null;
-    let confirmCallback = null;
-    let uploadedImagesBase64 = [];
-    let newProfilePicBase64 = null;
+    const settingsModal = document.getElementById('settings-modal');
+    const userApprovalModal = document.getElementById('user-approval-modal');
+    const pendingUsersContainer = document.getElementById('pending-users-container');
+    const notificationBell = document.getElementById('notification-bell');
+    const notificationPanel = document.getElementById('notification-panel');
+    const notificationList = document.getElementById('notification-list');
     
+    // NEW: Function to check user permissions
+    function checkPermission(permission) {
+        if (!currentUserProfile) return false;
+        const role = currentUserProfile.role || 'Officer';
+        const permissions = {
+            'Admin': ['admin-only', 'admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canManageSystem', 'canPlanWork', 'canComment', 'canApproveUsers'],
+            'Supervisor': ['admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canPlanWork', 'canComment', 'canApproveUsers'],
+            'Senior': ['senior-and-up', 'canViewKpi', 'canPlanWork', 'canComment'],
+            'Officer': ['canComment'],
+            'Viewer': []
+        };
+        return permissions[role] && permissions[role].includes(permission);
+    }
+
     function showNotification(message, isSuccess = true) {
         const toast = document.getElementById('notification-toast');
         const messageP = document.getElementById('notification-message');
@@ -205,8 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentUserProfile) return;
         const role = currentUserProfile.role || 'Officer';
         const roles = {
-            'Admin': ['admin-only', 'admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canManageSystem', 'canPlanWork', 'canComment'],
-            'Supervisor': ['admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canPlanWork', 'canComment'],
+            'Admin': ['admin-only', 'admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canManageSystem', 'canPlanWork', 'canComment', 'canApproveUsers'],
+            'Supervisor': ['admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canPlanWork', 'canComment', 'canApproveUsers'],
             'Senior': ['senior-and-up', 'canViewKpi', 'canPlanWork', 'canComment'],
             'Officer': ['canComment'],
             'Viewer': []
@@ -242,6 +275,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists()) {
                 currentUserProfile = userDoc.data();
+                
+                // NEW: Check for pending status
+                if (currentUserProfile.status === 'pending') {
+                    showNotification('บัญชีของคุณอยู่ระหว่างการตรวจสอบ กรุณารอผู้ดูแลระบบอนุมัติ', false);
+                    signOut(auth);
+                    return;
+                }
             } else {
                 // If user doc doesn't exist (e.g., new registration race condition), create a temporary one.
                 currentUserProfile = {
@@ -250,7 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastName: "ใหม่",
                     role: 'Officer', // Default role
                     smallStars: 0,
-                    bigStars: 0
+                    bigStars: 0,
+                    status: 'approved' // Default status for existing user without doc
                 };
             }
             isAdmin = user.email === 'admin@admin.com';
@@ -268,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentUserProfile.bigStars = 0;
                 await setDoc(userDocRef, { bigStars: 0 }, { merge: true });
             }
-            
+
             updateUserDisplays(currentUserProfile);
             updateUIForRoles();
             setupFirestoreListeners();
@@ -287,11 +328,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (unsubscribeUsers) unsubscribeUsers();
         if (unsubscribeScores) unsubscribeScores();
         if (unsubscribeStarPoints) unsubscribeStarPoints();
+        if (unsubscribeLogs) unsubscribeLogs();
     }
     
     function setupFirestoreListeners() {
         if (!currentUser) return;
         detachFirestoreListeners();
+        
         const transfersQuery = query(collection(db, "transfers"));
         unsubscribeTransfers = onSnapshot(transfersQuery, (snapshot) => {
             const allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -342,7 +385,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const usersQuery = query(collection(db, "users"));
             unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
                 allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                pendingUsers = allUsers.filter(user => user.status === 'pending'); // NEW: Filter pending users
                 if (views.kpi && views.kpi.style.display === 'block') renderKpiView();
+                // NEW: Update user management view if it's open
+                if(document.getElementById('user-management-container')?.style.display !== 'none') {
+                    renderUserManagement();
+                }
             });
             
             const scoresQuery = query(collection(db, "scores"));
@@ -364,30 +412,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (views.profile && views.profile.style.display === 'block') renderProfileStarPoints();
             });
         }
+        
+        // NEW: Setup system logs listener for admins
+        if (userRole === 'Admin') {
+            const logsQuery = query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(20));
+            unsubscribeLogs = onSnapshot(logsQuery, (snapshot) => {
+                allLogs = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    timestamp: doc.data().timestamp?.toDate() || new Date()
+                }));
+                if (views.transfers && views.transfers.style.display === 'block' && checkView.style.display === 'block' && currentTforData) {
+                    renderComments(currentTforData.id);
+                }
+            });
+        }
     }
     
     loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        // Show loading spinner during login
         const loadingContainer = document.getElementById('loading-container');
         loadingContainer.style.display = 'flex';
         
         signInWithEmailAndPassword(auth, loginForm['login-email'].value, loginForm['login-password'].value)
             .then(() => {
                 showNotification('เข้าสู่ระบบสำเร็จ!');
-                // Hide loading spinner after successful login
                 loadingContainer.style.display = 'none';
             })
             .catch((error) => {
                 showNotification(`เข้าสู่ระบบไม่สำเร็จ: ${error.message}`, false);
-                // Hide loading spinner after failed login
                 loadingContainer.style.display = 'none';
             });
     });
     
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        // Show loading spinner during registration
         const loadingContainer = document.getElementById('loading-container');
         loadingContainer.style.display = 'flex';
         
@@ -404,15 +463,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 email,
                 role: 'Officer', // Default role
                 smallStars: 0,
-                bigStars: 0
+                bigStars: 0,
+                status: 'pending', // NEW: New users need admin approval
+                createdAt: serverTimestamp()
             });
-            showNotification('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
+            showNotification('สมัครสมาชิกสำเร็จ! กรุณารอผู้ดูแลระบบอนุมัติ');
             showAuthForm('login');
-            // Hide loading spinner after successful registration
             loadingContainer.style.display = 'none';
         } catch (error) {
             showNotification(`สมัครสมาชิกไม่สำเร็จ: ${error.message}`, false);
-            // Hide loading spinner after failed registration
             loadingContainer.style.display = 'none';
         }
     });
@@ -440,6 +499,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('profile-button').addEventListener('click', () => {
         renderProfileView();
         showMainView(views.profile);
+    });
+
+    // NEW: Go to Documentation
+    document.getElementById('go-to-documentation')?.addEventListener('click', () => {
+        showMainView(views.documentation);
     });
     
     document.querySelectorAll('.toggle-password').forEach(el => {
@@ -591,8 +655,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    const branches = ['WH.40 (NDC)', 'WH.61 Chiangmai', 'WH.62 Suratthani', 'WH.63 Nakhon Ratchasima', 'WH.64 Leamchabang', 'WH.65 Udon Thani', 'WH.66 Phitsanulok', 'WH.67 Ratchaburi', 'WH.68 Hat Yai'];
-    
     function addTforBlock() {
         const year = new Date().getFullYear().toString().substr(-2);
         const tforBlock = document.createElement('div');
@@ -656,7 +718,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         tforBlock.querySelector('.remove-tfor-button').addEventListener('click', () => tforBlock.remove());
 
-        // Listeners for Linked TFORs
         const addBtn = tforBlock.querySelector('.add-linked-tfor-btn');
         const input = tforBlock.querySelector('.linked-tfor-input');
         const list = tforBlock.querySelector('.linked-tfor-list');
@@ -687,7 +748,6 @@ document.addEventListener('DOMContentLoaded', () => {
     inboundForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // --- FORM VALIDATION ---
         if (document.getElementById('lp-front').value.trim() === '' || document.getElementById('lp-back').value.trim() === '') {
             showNotification('กรุณากรอกทะเบียนรถให้ครบถ้วน', false); return;
         }
@@ -710,7 +770,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isFormValid) {
             showNotification('กรุณากรอกข้อมูล TFOR, สาขา, และเลือกพาเลทให้ครบทุกรายการ', false); return;
         }
-        // --- END VALIDATION ---
         
         saveButton.innerHTML = `<div class="loading-spinner w-5 h-5 border-white border-t-transparent rounded-full mr-2"></div> กำลังบันทึก...`;
         saveButton.disabled = true;
@@ -789,7 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const index = checkedPallets.indexOf(palletNum);
         if (index > -1) checkedPallets.splice(index, 1);
         else checkedPallets.push(palletNum);
-        currentTforData.checkedPallets = checkedPallets; 
+        currentTforData.checkedPallets = checkedPallets;
         const transferDocRef = doc(db, "transfers", currentTforData.id);
         const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
         const checkLog = currentTforData.checkLog || [];
@@ -804,7 +863,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 checkLog: checkLog
             });
             
-            // Log the action
             await logAction('เช็คพาเลท', {
                 transferId: currentTforData.id,
                 palletNumber: palletNum,
@@ -848,7 +906,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 receiveLog: receiveLog
             });
             
-            // Log the action
             await logAction('รับสินค้า', {
                 transferId: currentTforData.id,
                 palletNumber: palletNum,
@@ -889,7 +946,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 receiveLog: receiveLog
             });
             
-            // Log the action
             await logAction('รับสินค้าทั้งหมด', {
                 transferId: currentTforData.id,
                 user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
@@ -931,7 +987,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             await batch.commit();
             
-            // Log the action
             await logAction('รายงานปัญหา', {
                 transferId: currentTforData.id,
                 palletNumber: palletNum,
@@ -956,7 +1011,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 issuesSnapshot.forEach(doc => batch.delete(doc.ref));
                 await batch.commit();
                 
-                // Log the action
                 await logAction('ลบรายการ TFOR', {
                     transferId: transferId,
                     user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
@@ -975,7 +1029,6 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await deleteDoc(doc(db, "issues", issueId));
                 
-                // Log the action
                 await logAction('ลบปัญหา', {
                     issueId: issueId,
                     user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
@@ -994,12 +1047,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let filteredData = allTransfersData.filter(d => !d.scheduledDate && !d.isReceived);
         if (filter) {
             const lowerCaseFilter = filter.toLowerCase();
-            filteredData = filteredData.filter(d => 
-                (d.tforNumber || '').toLowerCase().includes(lowerCaseFilter) || 
+            filteredData = filteredData.filter(d =>
+                (d.tforNumber || '').toLowerCase().includes(lowerCaseFilter) ||
                 (d.licensePlate || '').toLowerCase().includes(lowerCaseFilter) ||
                 (d.branch || '').toLowerCase().includes(lowerCaseFilter) ||
-                (d.linkedTfors && d.linkedTfors.some(lt => 
-                    lt.toLowerCase().includes(lowerCaseFilter) || 
+                (d.linkedTfors && d.linkedTfors.some(lt =>
+                    lt.toLowerCase().includes(lowerCaseFilter) ||
                     lt.toLowerCase().endsWith(lowerCaseFilter)
                 ))
             );
@@ -1040,7 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusColor = 'bg-yellow-100 text-yellow-800';
             }
             
-            const linkedTforsHtml = data.linkedTfors && data.linkedTfors.length > 0 
+            const linkedTforsHtml = data.linkedTfors && data.linkedTfors.length > 0
                 ? data.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')
                 : '-';
             
@@ -1078,19 +1131,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('details-search').addEventListener('input', (e) => renderDetailsTable(e.target.value, document.getElementById('details-sort').value));
     document.getElementById('details-sort').addEventListener('change', (e) => renderDetailsTable(document.getElementById('details-search').value, e.target.value));
     
-    // เพิ่มปุ่มวางแผนงานในหน้ารายละเอียด TRANSFERS
     document.getElementById('plan-work-btn')?.addEventListener('click', () => {
         if (!currentTforData) {
-            // ถ้าไม่มีข้อมูล TFOR ที่เลือก ให้แสดงปฏิทินเพื่อเลือกวันที่วางแผน
             showCalendarPicker();
         } else {
-            // ถ้ามีข้อมูล TFOR ที่เลือก ให้แสดง modal สำหรับวางแผน
             showSchedulingModalForTransfer(currentTforData);
         }
     });
     
     function showCalendarPicker() {
-        // สร้างปฏิทินสำหรับเลือกวันที่วางแผน
         const calendarPicker = document.createElement('div');
         calendarPicker.className = 'calendar-picker';
         
@@ -1098,7 +1147,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();
         
-        // สร้าง header ของปฏิทิน
         const header = document.createElement('div');
         header.className = 'calendar-picker-header';
         header.innerHTML = `
@@ -1107,11 +1155,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <button id="next-month" class="px-2 py-1 rounded hover:bg-gray-200">&gt;</button>
         `;
         
-        // สร้าง grid สำหรับวันที่
         const grid = document.createElement('div');
         grid.className = 'calendar-picker-grid';
         
-        // สร้างชื่อวัน
         const dayNames = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
         dayNames.forEach(day => {
             const dayName = document.createElement('div');
@@ -1120,33 +1166,27 @@ document.addEventListener('DOMContentLoaded', () => {
             grid.appendChild(dayName);
         });
         
-        // สร้างวันที่ในเดือน
         const firstDay = new Date(currentYear, currentMonth, 1).getDay();
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         
-        // เพิ่มวันที่ว่างก่อนวันแรกของเดือน
         for (let i = 0; i < firstDay; i++) {
             const emptyDay = document.createElement('div');
             grid.appendChild(emptyDay);
         }
         
-        // เพิ่มวันที่ในเดือน
         for (let day = 1; day <= daysInMonth; day++) {
             const dayElement = document.createElement('div');
             dayElement.className = 'calendar-picker-day';
             dayElement.textContent = day;
             
-            // เพิ่มคลาสสำหรับวันนี้
             if (currentYear === today.getFullYear() && currentMonth === today.getMonth() && day === today.getDate()) {
                 dayElement.classList.add('today');
             }
             
-            // เพิ่ม event listener สำหรับการเลือกวันที่
             dayElement.addEventListener('click', () => {
                 const selectedDate = new Date(currentYear, currentMonth, day);
                 const dateString = selectedDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
                 
-                // ปิดปฏิทินและแสดง modal สำหรับเลือก TFOR ที่จะวางแผน
                 calendarPicker.remove();
                 showSchedulingModal(dateString);
             });
@@ -1157,10 +1197,8 @@ document.addEventListener('DOMContentLoaded', () => {
         calendarPicker.appendChild(header);
         calendarPicker.appendChild(grid);
         
-        // เพิ่มปฏิทินเข้าไปในหน้า
         document.body.appendChild(calendarPicker);
         
-        // เพิ่ม event listener สำหรับปุ่มเปลี่ยนเดือน
         header.querySelector('#prev-month').addEventListener('click', () => {
             calendarPicker.remove();
             showCalendarPickerForMonth(currentMonth - 1, currentYear);
@@ -1171,7 +1209,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showCalendarPickerForMonth(currentMonth + 1, currentYear);
         });
         
-        // เพิ่ม event listener สำหรับการคลิกนอกปฏิทินเพื่อปิด
         document.addEventListener('click', function closeCalendar(e) {
             if (!calendarPicker.contains(e.target) && e.target !== document.getElementById('plan-work-btn')) {
                 calendarPicker.remove();
@@ -1181,13 +1218,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function showCalendarPickerForMonth(month, year) {
-        // สร้างปฏิทินสำหรับเดือนและปีที่ระบุ
         const calendarPicker = document.createElement('div');
         calendarPicker.className = 'calendar-picker';
         
         const today = new Date();
         
-        // สร้าง header ของปฏิทิน
         const header = document.createElement('div');
         header.className = 'calendar-picker-header';
         header.innerHTML = `
@@ -1196,11 +1231,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <button id="next-month" class="px-2 py-1 rounded hover:bg-gray-200">&gt;</button>
         `;
         
-        // สร้าง grid สำหรับวันที่
         const grid = document.createElement('div');
         grid.className = 'calendar-picker-grid';
         
-        // สร้างชื่อวัน
         const dayNames = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
         dayNames.forEach(day => {
             const dayName = document.createElement('div');
@@ -1209,33 +1242,27 @@ document.addEventListener('DOMContentLoaded', () => {
             grid.appendChild(dayName);
         });
         
-        // สร้างวันที่ในเดือน
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        // เพิ่มวันที่ว่างก่อนวันแรกของเดือน
         for (let i = 0; i < firstDay; i++) {
             const emptyDay = document.createElement('div');
             grid.appendChild(emptyDay);
         }
         
-        // เพิ่มวันที่ในเดือน
         for (let day = 1; day <= daysInMonth; day++) {
             const dayElement = document.createElement('div');
             dayElement.className = 'calendar-picker-day';
             dayElement.textContent = day;
             
-            // เพิ่มคลาสสำหรับวันนี้
             if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
                 dayElement.classList.add('today');
             }
             
-            // เพิ่ม event listener สำหรับการเลือกวันที่
             dayElement.addEventListener('click', () => {
                 const selectedDate = new Date(year, month, day);
                 const dateString = selectedDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
                 
-                // ปิดปฏิทินและแสดง modal สำหรับเลือก TFOR ที่จะวางแผน
                 calendarPicker.remove();
                 showSchedulingModal(dateString);
             });
@@ -1246,10 +1273,8 @@ document.addEventListener('DOMContentLoaded', () => {
         calendarPicker.appendChild(header);
         calendarPicker.appendChild(grid);
         
-        // เพิ่มปฏิทินเข้าไปในหน้า
         document.body.appendChild(calendarPicker);
         
-        // เพิ่ม event listener สำหรับปุ่มเปลี่ยนเดือน
         header.querySelector('#prev-month').addEventListener('click', () => {
             calendarPicker.remove();
             const prevMonth = month - 1;
@@ -1264,7 +1289,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showCalendarPickerForMonth(nextMonth > 11 ? 0 : nextMonth, nextYear);
         });
         
-        // เพิ่ม event listener สำหรับการคลิกนอกปฏิทินเพื่อปิด
         document.addEventListener('click', function closeCalendar(e) {
             if (!calendarPicker.contains(e.target) && e.target !== document.getElementById('plan-work-btn')) {
                 calendarPicker.remove();
@@ -1274,7 +1298,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function showSchedulingModalForTransfer(transferData) {
-        // แสดง modal สำหรับวางแผนงานของ TFOR ที่เลือก
         const arrivalDate = parseThaiDate(transferData.deliveryDate);
         let dueDateString = 'N/A';
         if (arrivalDate) {
@@ -1282,8 +1305,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dueDateString = dueDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
         }
         
-        // แสดง TFOR พ่วง
-        const linkedTforsHtml = transferData.linkedTfors && transferData.linkedTfors.length > 0 
+        const linkedTforsHtml = transferData.linkedTfors && transferData.linkedTfors.length > 0
             ? transferData.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')
             : 'ไม่มี';
         
@@ -1310,7 +1332,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         showDetailsModal(modalHtml, true);
         
-        // เพิ่ม event listener สำหรับปุ่มบันทึก
         document.getElementById('save-schedule-btn').addEventListener('click', async () => {
             const scheduleDate = document.getElementById('schedule-date').value;
             if (!scheduleDate) {
@@ -1318,7 +1339,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // แปลงวันที่เป็นรูปแบบไทย
             const dateObj = new Date(scheduleDate);
             const thaiDateString = dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
             
@@ -1365,8 +1385,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const dueDate = calculateDueDate(arrivalDate);
             dueDateString = dueDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
         }
-        const imagesHTML = (currentTforData.images && currentTforData.images.length > 0) 
-            ? `<div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">${currentTforData.images.map(img => `<a href="${img}" target="_blank"><img src="${img}" class="h-32 w-full object-cover rounded-lg shadow-md"></a>`).join('')}</div>`
+        const imagesHTML = (currentTforData.images && currentTforData.images.length > 0)
+            ? `<div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 image-preview">${currentTforData.images.map(img => `<img src="${img}" class="h-32 w-full object-cover rounded-lg shadow-md">`).join('')}</div>`
             : '<p class="text-sm text-gray-500 mt-2">ไม่มีรูปภาพ</p>';
         detailsContainer.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -1379,7 +1399,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="linked-tfor-display" class="mt-4"></div>
             <div class="mt-4"><p class="text-sm font-semibold text-gray-500 mb-2">รูปภาพรวม</p>${imagesHTML}</div>
         `;
-
         const linkedTforContainer = document.getElementById('linked-tfor-display');
         if (currentTforData.linkedTfors && currentTforData.linkedTfors.length > 0) {
             linkedTforContainer.innerHTML = `
@@ -1422,7 +1441,6 @@ document.addEventListener('DOMContentLoaded', () => {
             receivePalletButtonsContainer.appendChild(receiveBtn);
         });
         
-        // เพิ่มปุ่มรับสินค้าทั้งหมด
         if (currentTforData.checkedPallets && currentTforData.checkedPallets.length > 0) {
             const receiveAllBtn = document.createElement('button');
             receiveAllBtn.className = 'mt-4 px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold shadow-lg hover:bg-purple-700';
@@ -1431,7 +1449,6 @@ document.addEventListener('DOMContentLoaded', () => {
             receivePalletButtonsContainer.appendChild(receiveAllBtn);
         }
         
-        // แสดงเฉพาะปุ่มรายงานปัญหารวม
         const issueBtn = document.createElement('button');
         issueBtn.className = 'issue-transfer-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105 bg-red-100 text-red-700';
         issueBtn.textContent = `รายงานปัญหาทั้งหมด`;
@@ -1441,11 +1458,78 @@ document.addEventListener('DOMContentLoaded', () => {
             renderIssueFormForTransfer();
         });
         issuePalletButtonsContainer.appendChild(issueBtn);
+        
+        // NEW: Render comments
+        renderComments(currentTforData.id);
+    }
+    
+    // NEW: Render comments for a specific transfer
+    function renderComments(transferId) {
+        const container = document.getElementById('comments-display');
+        container.innerHTML = '';
+        
+        const logsForTransfer = allLogs.filter(log => log.details.transferId === transferId);
+        if (logsForTransfer.length === 0) {
+            container.innerHTML = `<p class="text-gray-500 text-center">ไม่มีกิจกรรมหรือความคิดเห็น</p>`;
+            return;
+        }
+        
+        logsForTransfer.forEach(log => {
+            const logTime = log.timestamp.toLocaleString('th-TH');
+            const logElement = document.createElement('div');
+            let logHtml = '';
+            
+            if (log.action === 'comment') {
+                logElement.className = 'p-3 bg-white rounded-lg shadow-sm';
+                logHtml = `
+                    <p class="font-semibold">${log.userName}</p>
+                    <p class="text-sm text-gray-700">${log.details.comment}</p>
+                    <p class="text-xs text-gray-500 mt-1">${logTime}</p>
+                `;
+            } else {
+                logElement.className = 'text-xs text-gray-600 italic';
+                let actionText = '';
+                if (log.action === 'เช็คพาเลท') {
+                    actionText = `เช็คพาเลทที่ ${log.details.palletNumber}`;
+                } else if (log.action === 'รับสินค้า') {
+                    actionText = `รับสินค้าพาเลทที่ ${log.details.palletNumber}`;
+                } else if (log.action === 'รับสินค้าทั้งหมด') {
+                    actionText = `รับสินค้าทั้งหมด`;
+                } else if (log.action === 'รายงานปัญหา') {
+                    actionText = `รายงานปัญหาเกี่ยวกับพาเลทที่ ${log.details.palletNumber}`;
+                }
+                logHtml = `
+                    <span>[${logTime}] ${log.userName} ได้ทำการ ${actionText}</span>
+                `;
+            }
+            logElement.innerHTML = logHtml;
+            container.appendChild(logElement);
+        });
+    }
+    
+    // NEW: Post a new comment
+    async function postComment(transferId, commentText) {
+        try {
+            await addDoc(collection(db, "logs"), {
+                action: 'comment',
+                details: {
+                    transferId: transferId,
+                    comment: commentText
+                },
+                userId: currentUser.uid,
+                userName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                timestamp: serverTimestamp()
+            });
+            showNotification('เพิ่มความคิดเห็นแล้ว');
+        } catch (error) {
+            console.error("Error posting comment:", error);
+            showNotification('เกิดข้อผิดพลาดในการโพสต์ความคิดเห็น', false);
+        }
     }
     
     function renderIssueFormForTransfer() {
         const issueFormsContainer = document.getElementById('issue-forms-container');
-        issueFormsContainer.innerHTML = ''; 
+        issueFormsContainer.innerHTML = '';
         const formWrapper = document.createElement('div');
         formWrapper.id = `issue-form-transfer-${currentTforData.id}`;
         formWrapper.className = 'mt-6 border-t pt-6';
@@ -1554,8 +1638,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('completed-container');
         const filteredData = completedTransfersData.filter(d => d.isCompleted && d.isReceived);
         if (filter) {
-            filteredData = filteredData.filter(d => 
-                (d.tforNumber || '').includes(filter) || 
+            filteredData = filteredData.filter(d =>
+                (d.tforNumber || '').includes(filter) ||
                 (d.licensePlate || '').toLowerCase().includes(filter.toLowerCase()) ||
                 (d.branch || '').toLowerCase().includes(filter.toLowerCase())
             );
@@ -1564,8 +1648,8 @@ document.addEventListener('DOMContentLoaded', () => {
         filteredData.forEach(data => {
             const card = document.createElement('div');
             card.className = 'bg-white p-6 rounded-2xl shadow-md border border-gray-200';
-            const imagesHTML = (data.images && data.images.length > 0) 
-                ? `<div class="mt-4 grid grid-cols-3 gap-2">${data.images.slice(0,3).map(img => `<img src="${img}" class="h-24 w-full object-cover rounded-md cursor-pointer" onclick="document.getElementById('details-modal').dispatchEvent(new CustomEvent('showDetails', { detail: { item: JSON.parse(this.dataset.item) } }))" data-item='${JSON.stringify(data)}'>`).join('')}</div>`
+            const imagesHTML = (data.images && data.images.length > 0)
+                ? `<div class="mt-4 grid grid-cols-3 gap-2 image-preview">${data.images.slice(0,3).map(img => `<img src="${img}" class="h-24 w-full object-cover rounded-md cursor-pointer" onclick="document.getElementById('details-modal').dispatchEvent(new CustomEvent('showDetails', { detail: { item: JSON.parse(this.dataset.item) } }))" data-item='${JSON.stringify(data)}'>`).join('')}</div>`
                 : '<p class="text-sm text-gray-400 mt-4">ไม่มีรูปภาพ</p>';
             card.innerHTML = `
                 <div class="flex justify-between items-start">
@@ -1608,7 +1692,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('issues-container');
         container.innerHTML = '';
         
-        // แสดงรายการมีปัญหาทั้งหมด (ไม่กรองเฉพาะวันนี้)
         const allIssues = Object.values(issuesData)
             .flat();
         
@@ -1617,7 +1700,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // จัดกลุ่มตามประเภทปัญหา
         const issuesByType = {};
         allIssues.forEach(issue => {
             (issue.issueTypes || ['อื่นๆ']).forEach(type => {
@@ -1643,19 +1725,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     const allImages = [...(issue.issueImages || []), ...(issue.images || [])];
                     const imageThumb = allImages.length > 0 ? `<img src="${allImages[0]}" class="w-12 h-12 object-cover rounded-md mr-4">` : '';
                     
-                    // Display both checker and reporter information
                     let userDisplay = `<div class="text-sm text-gray-600">ผู้รายงาน: ${issue.reportedByName || 'N/A'}</div>`;
                     if (issue.checkerName && issue.checkerName !== issue.reportedByName) {
                         userDisplay += `<div class="text-sm text-blue-600">ผู้เช็ค: ${issue.checkerName}</div>`;
                     }
                     
-                    // Display notes if available
                     let notesDisplay = '';
                     if (issue.notes) {
                         notesDisplay = `<div class="text-sm text-purple-600 mt-1">หมายเหตุ: ${issue.notes}</div>`;
                     }
                     
-                    // Display report date
                     let reportDateDisplay = `<div class="text-sm text-green-600 mt-1">วันที่รายงาน: ${issue.reportDate || 'N/A'}</div>`;
                     
                     issueItem.className = 'p-2 hover:bg-gray-100 rounded-md flex justify-between items-center';
@@ -1696,17 +1775,15 @@ document.addEventListener('DOMContentLoaded', () => {
             detailsModalContent.innerHTML += item;
         } else {
             const allImages = [...(item.images || []), ...(item.issueImages || [])];
-            const imagesHTML = allImages.length > 0 
-                ? `<div class="grid grid-cols-2 gap-2">${allImages.map(img => `<a href="${img}" target="_blank"><img src="${img}" class="rounded-lg w-full h-auto"></a>`).join('')}</div>`
+            const imagesHTML = allImages.length > 0
+                ? `<div class="grid grid-cols-2 gap-2 image-preview">${allImages.map(img => `<img src="${img}" class="rounded-lg w-full h-auto">`).join('')}</div>`
                 : 'ไม่มีรูปภาพ';
             
-            // Display both checker and reporter information
             let userDisplay = `<p><strong>ผู้รายงาน:</strong> ${item.reportedByName || 'N/A'}</p>`;
             if (item.checkerName && item.checkerName !== item.reportedByName) {
                 userDisplay += `<p><strong>ผู้เช็ค:</strong> ${item.checkerName}</p>`;
             }
             
-            // Display notes if available
             let notesDisplay = '';
             if (item.notes) {
                 notesDisplay = `<p><strong>หมายเหตุ:</strong> ${item.notes}</p>`;
@@ -1734,7 +1811,6 @@ document.addEventListener('DOMContentLoaded', () => {
         detailsModal.classList.add('flex');
     }
     
-    // MODAL CLOSE LOGIC (EVENT DELEGATION)
     detailsModal.addEventListener('click', (e) => {
         if (e.target.id === 'close-details-modal' || e.target.id === 'details-modal') {
              detailsModal.classList.add('hidden');
@@ -1819,9 +1895,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
-    const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-    const thaiMonthMap = thaiMonths.reduce((map, month, i) => { map[month] = i; return map; }, {});
-    
     function parseThaiDate(thaiDateStr) {
         if (!thaiDateStr) return null;
         const parts = thaiDateStr.split(' ');
@@ -1870,7 +1943,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const scheduledOnDay = allTransfersData.filter(t => t.scheduledDate === currentDateString);
             const completedOnDay = completedTransfersData.filter(t => parseThaiDate(t.completionDate)?.toDateString() === currentDate.toDateString());
             
-            // สร้าง tooltip สำหรับแสดงข้อมูลเมื่อ hover
             let tooltipContent = '';
             if (scheduledOnDay.length > 0) {
                 tooltipContent += `<div class="font-semibold text-purple-600">งานที่วางแผน:</div>`;
@@ -1893,7 +1965,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             
-            // สร้าง tooltip element
             if (tooltipContent) {
                 const tooltip = document.createElement('div');
                 tooltip.className = 'calendar-tooltip hidden absolute bg-white shadow-lg rounded-lg p-3 z-10 text-left max-w-xs';
@@ -1903,7 +1974,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 tooltip.style.transform = 'translateX(-50%)';
                 tooltip.style.marginTop = '5px';
                 
-                // เพิ่ม event listeners สำหรับการ hover
                 dayEl.addEventListener('mouseenter', () => {
                     tooltip.classList.remove('hidden');
                 });
@@ -1940,8 +2010,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hasContent = true;
             modalHtml += '<h4 class="font-semibold mt-4 text-purple-600">งานที่วางแผนไว้</h4><div class="space-y-2 border-l-4 border-purple-200 pl-4 py-2">';
             scheduledOnDay.forEach(e => {
-                // แสดง TFOR พ่วง
-                const linkedTforsHtml = e.linkedTfors && e.linkedTfors.length > 0 
+                const linkedTforsHtml = e.linkedTfors && e.linkedTfors.length > 0
                     ? e.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')
                     : '';
                 
@@ -1961,8 +2030,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hasContent = true;
             modalHtml += '<h4 class="font-semibold mt-4 text-blue-600">TFORs ที่มาถึง</h4><div class="space-y-2 border-l-4 border-blue-200 pl-4 py-2">';
             newEntriesOnDay.forEach(e => {
-                // แสดง TFOR พ่วง
-                const linkedTforsHtml = e.linkedTfors && e.linkedTfors.length > 0 
+                const linkedTforsHtml = e.linkedTfors && e.linkedTfors.length > 0
                     ? e.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')
                     : '';
                 
@@ -1999,7 +2067,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('open-scheduler-btn')?.addEventListener('click', () => showSchedulingModal(dateString));
         document.querySelectorAll('.unschedule-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                e.stopPropagation(); // Prevent modal click handler from firing
+                e.stopPropagation();
                 const transferId = e.target.dataset.id;
                 try {
                     await updateDoc(doc(db, "transfers", transferId), { scheduledDate: null, scheduledByUid: null, scheduledByName: null });
@@ -2050,8 +2118,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const batch = writeBatch(db);
                 selectedIds.forEach(id => {
                     const docRef = doc(db, "transfers", id);
-                    batch.update(docRef, { 
-                        scheduledDate: dateString, 
+                    batch.update(docRef, {
+                        scheduledDate: dateString,
                         scheduledByUid: currentUser.uid,
                         scheduledByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
                     });
@@ -2067,13 +2135,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderCheckProductView() {
-        // แสดงรายการที่เช็คแล้วแต่ยังไม่ได้รับ (checked but not received)
         const checkedTforContainer = document.getElementById('checked-tfor-container');
         checkedTforContainer.innerHTML = '';
         
-        // หา TFOR ที่เช็คแล้วอย่างน้อย 1 พาเลท แต่ยังไม่ได้รับสินค้า (receivedPallets ว่างหรือไม่ครบ)
-        const checkedNotReceived = allTransfersData.filter(t => 
-            t.checkedPallets && t.checkedPallets.length > 0 && 
+        const checkedNotReceived = allTransfersData.filter(t =>
+            t.checkedPallets && t.checkedPallets.length > 0 &&
             (!t.receivedPallets || t.receivedPallets.length < t.checkedPallets.length)
         );
         
@@ -2111,14 +2177,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('todays-plan-container');
         container.innerHTML = '';
         
-        // Get today's date in Thai format
         const today = new Date();
         const todayString = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
         
-        // Get all transfers (both pending and completed)
         const allTransfers = [...allTransfersData, ...completedTransfersData];
         
-        // Filter transfers scheduled for today
         const todaysTransfers = allTransfers.filter(t => t.scheduledDate === todayString);
         
         if (todaysTransfers.length === 0) {
@@ -2135,13 +2198,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             
-            // Add event listener to the planning button
             const planButton = container.querySelector('.plan-work-permission');
             if (planButton) {
                 planButton.addEventListener('click', () => {
                     showMainView(views.calendar);
                     renderCalendar(new Date());
-                    // Show scheduling modal for today
                     setTimeout(() => {
                         showSchedulingModal(todayString);
                     }, 300);
@@ -2151,11 +2212,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Group transfers by status
         const pendingTransfers = todaysTransfers.filter(t => !t.isCompleted);
         const completedTransfers = todaysTransfers.filter(t => t.isCompleted);
         
-        // Render pending transfers
         if (pendingTransfers.length > 0) {
             const pendingSection = document.createElement('div');
             pendingSection.className = 'mb-8';
@@ -2193,7 +2252,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
                 
-                // Add click event to navigate to check view
                 card.addEventListener('click', (e) => {
                     if (!e.target.classList.contains('plan-work-permission')) {
                         currentTforData = transfer;
@@ -2203,17 +2261,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 
-                // Add event to cancel plan
                 card.querySelector('.plan-work-permission').addEventListener('click', async (e) => {
                     e.stopPropagation();
                     try {
-                        await updateDoc(doc(db, "transfers", transfer.id), { 
-                            scheduledDate: null, 
-                            scheduledByUid: null, 
-                            scheduledByName: null 
+                        await updateDoc(doc(db, "transfers", transfer.id), {
+                            scheduledDate: null,
+                            scheduledByUid: null,
+                            scheduledByName: null
                         });
                         showNotification('ยกเลิกแผนงานสำเร็จ');
-                        renderTodaysPlanView(); // Refresh the view
+                        renderTodaysPlanView();
                     } catch (error) {
                         showNotification('เกิดข้อผิดพลาดในการยกเลิก', false);
                     }
@@ -2225,7 +2282,6 @@ document.addEventListener('DOMContentLoaded', () => {
             container.appendChild(pendingSection);
         }
         
-        // Render completed transfers
         if (completedTransfers.length > 0) {
             const completedSection = document.createElement('div');
             completedSection.innerHTML = `
@@ -2259,7 +2315,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
                 
-                // Add click event to navigate to check view
                 card.addEventListener('click', () => {
                     currentTforData = transfer;
                     showMainView(views.transfers);
@@ -2273,7 +2328,6 @@ document.addEventListener('DOMContentLoaded', () => {
             container.appendChild(completedSection);
         }
         
-        // Update UI for roles
         updateUIForRoles();
     }
     
@@ -2344,7 +2398,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { title: 'พาเลททั้งหมด', value: stats.totalPallets, color: 'bg-indigo-100', textColor: 'text-indigo-800', items: stats.filteredData },
             { title: 'สินค้ามีปัญหา', value: stats.totalIssues, color: 'bg-yellow-100', textColor: 'text-yellow-800', items: Object.values(issuesData).flat().filter(i => { const iDate = i.createdAt?.toDate ? i.createdAt.toDate() : parseThaiDate(i.reportDate); return iDate && iDate >= new Date(new Date().getFullYear(), 0, 1);}) }
         ];
-        container.innerHTML = ''; // Clear previous cards
+        container.innerHTML = '';
         cardsData.forEach(card => {
             const cardEl = document.createElement('div');
             cardEl.className = `p-6 rounded-2xl shadow-lg ${card.color} cursor-pointer hover:scale-105 transition-transform`;
@@ -2352,7 +2406,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cardEl.addEventListener('click', () => showStatsDetailModal(card.title, card.items));
             container.appendChild(cardEl);
         });
-        // Chart 1: Inbound by Branch
+        
         const branchChartContainer = document.createElement('div');
         branchChartContainer.className = 'p-6 bg-white rounded-2xl shadow-inner';
         branchChartContainer.innerHTML = '<h3 class="text-xl font-bold mb-4">จำนวนของเข้าตามสาขา</h3><div class="relative h-64 md:h-80"><canvas id="branch-bar-chart"></canvas></div>';
@@ -2367,7 +2421,7 @@ document.addEventListener('DOMContentLoaded', () => {
             data: { labels: Object.keys(branchCounts), datasets: [{ label: 'จำนวน TFORs', data: Object.values(branchCounts), backgroundColor: '#a855f7' }] },
             options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }
         });
-        // Chart 2: Status Distribution
+        
         const statusChartContainer = document.createElement('div');
         statusChartContainer.className = 'p-6 bg-white rounded-2xl shadow-inner';
         statusChartContainer.innerHTML = '<h3 class="text-xl font-bold mb-4">สถานะการดำเนินงาน</h3><div class="relative h-64 md:h-80"><canvas id="status-pie-chart"></canvas></div>';
@@ -2375,12 +2429,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusCtx = document.getElementById('status-pie-chart').getContext('2d');
         currentChartInstances.statusChart = new Chart(statusCtx, {
             type: 'pie',
-            data: { 
-                labels: ['เช็คเสร็จแล้ว', 'รับสินค้าแล้ว', 'รอดำเนินการ'], 
-                datasets: [{ 
-                    data: [stats.totalCompleted, stats.totalReceived, stats.totalInbound - stats.totalCompleted], 
-                    backgroundColor: ['#22c55e', '#a855f7', '#f59e0b'] 
-                }] 
+            data: {
+                labels: ['เช็คเสร็จแล้ว', 'รับสินค้าแล้ว', 'รอดำเนินการ'],
+                datasets: [{
+                    data: [stats.totalCompleted, stats.totalReceived, stats.totalInbound - stats.totalCompleted],
+                    backgroundColor: ['#22c55e', '#a855f7', '#f59e0b']
+                }]
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
@@ -2392,7 +2446,7 @@ document.addEventListener('DOMContentLoaded', () => {
             listHtml = '<p class="text-gray-500 text-center">ไม่พบข้อมูล</p>';
         } else {
             listHtml = items.map(item => {
-                const transferId = item.id || item.transferId; 
+                const transferId = item.id || item.transferId;
                 let detailText = `ทะเบียน: ${item.licensePlate} | วันที่: ${item.deliveryDate || item.reportDate}`;
                 if (title === 'พาเลททั้งหมด') {
                     detailText = `พาเลท: ${item.palletNumbers.join(', ')}`;
@@ -2427,8 +2481,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
-    // --- NEW/IMPROVED EXPORT LOGIC ---
-    
     async function generateAndExportPdf() {
         const button = document.getElementById('export-pdf-btn');
         button.disabled = true;
@@ -2455,44 +2507,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     padding: 20px;
                     font-size: 14px;
                 }
-                h1 { 
-                    font-size: 24px; 
-                    font-weight: bold; 
-                    margin-bottom: 16px; 
+                h1 {
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin-bottom: 16px;
                     text-align: center;
                     color: #4f46e5;
                 }
-                h2 { 
-                    font-size: 18px; 
-                    font-weight: bold; 
-                    margin-top: 24px; 
-                    margin-bottom: 12px; 
-                    border-bottom: 1px solid #ccc; 
+                h2 {
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-top: 24px;
+                    margin-bottom: 12px;
+                    border-bottom: 1px solid #ccc;
                     padding-bottom: 4px;
                     color: #4f46e5;
                 }
-                table { 
-                    width: 100%; 
-                    border-collapse: collapse; 
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
                     font-size: 12px;
                     margin-bottom: 20px;
                 }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 8px; 
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 8px;
                     text-align: left;
                 }
-                th { 
+                th {
                     background-color: #f2f2f2;
                     font-weight: bold;
                 }
-                .chart-image { 
-                    max-width: 90%; 
-                    height: auto; 
-                    display: block; 
+                .chart-image {
+                    max-width: 90%;
+                    height: auto;
+                    display: block;
                     margin: 20px auto;
                 }
-                .page-break { 
+                .page-break {
                     page-break-before: always;
                 }
                 .summary-card {
@@ -2608,15 +2660,15 @@ document.addEventListener('DOMContentLoaded', () => {
             margin: 10,
             filename: `inbound_report_${timeframe}_${new Date().toISOString().split('T')[0]}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
+            html2canvas: {
                 scale: 2,
                 useCORS: true,
                 logging: false,
                 letterRendering: true
             },
-            jsPDF: { 
-                unit: 'mm', 
-                format: 'a4', 
+            jsPDF: {
+                unit: 'mm',
+                format: 'a4',
                 orientation: 'portrait'
             }
         };
@@ -2652,8 +2704,8 @@ document.addEventListener('DOMContentLoaded', () => {
             row.createdByName || '',
             row.palletNotes || ''
         ]);
-        let csvContent = "data:text/csv;charset=utf-8,\uFEFF" // \uFEFF for BOM to handle Thai characters in Excel
-             + headers.join(",") + "\n" 
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+             + headers.join(",") + "\n"
              + rows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -2699,7 +2751,6 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmCallback = null;
     });
     
-    // --- KPI View Logic ---
     function renderKpiView() {
         const summaryContainer = document.getElementById('kpi-summary-container');
         const detailsContainer = document.getElementById('kpi-details-container');
@@ -2713,17 +2764,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === user.id).length;
             const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
             
-            // Count issues reported by this user
             const reportedIssuesCount = allIssues.filter(i => i.reportedByUid === user.id).length;
             
-            // Count issues found by this user (where they were the checker)
             const foundIssuesCount = allIssues.filter(i => i.checkerUid === user.id).length;
             
             const userScores = allScores.filter(s => s.userId === user.id);
             const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
             const profilePic = user.profilePictureUrl || 'https://placehold.co/80x80/e0e0e0/757575?text=?';
             
-            // KPI Calculation: Checked + Created + Found Issues + Reported Issues + Received + Stars
             const kpiScore = checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
             const scoreColor = kpiScore > 10 ? 'text-green-500' : kpiScore > 0 ? 'text-blue-500' : 'text-red-500';
             const card = document.createElement('div');
@@ -2762,7 +2810,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         renderUserManagement();
         
-        // Add event listeners to star points buttons
         document.querySelectorAll('.give-star-points-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -2809,7 +2856,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         container.appendChild(table);
         
-        // Add event listeners for role selection
         document.querySelectorAll('.role-select').forEach(select => {
             select.addEventListener('change', async (e) => {
                 const newRole = e.target.value;
@@ -2823,7 +2869,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         
-        // Add event listeners for delete buttons
         document.querySelectorAll('.delete-user-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const uid = e.currentTarget.dataset.uid;
@@ -2832,7 +2877,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         
-        // Update UI for roles
         updateUIForRoles();
     }
     
@@ -2845,13 +2889,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function deleteUser(uid) {
         try {
-            // Delete the user document from Firestore
             await deleteDoc(doc(db, "users", uid));
             
-            // Remove the user from the local allUsers array
             allUsers = allUsers.filter(user => user.id !== uid);
             
-            // Re-render the KPI view to update the user list
             renderKpiView();
             
             showNotification("ลบผู้ใช้งานสำเร็จ");
@@ -2887,11 +2928,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === user.id).length;
         const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
         
-        // Count issues reported by this user
         const allIssues = Object.values(issuesData).flat();
         const reportedIssuesCount = allIssues.filter(i => i.reportedByUid === user.id).length;
         
-        // Count issues found by this user (where they were the checker)
         const foundIssuesCount = allIssues.filter(i => i.checkerUid === user.id).length;
         
         const performanceScore = checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
@@ -2977,7 +3016,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, responsive: true, maintainAspectRatio: false }
         });
-        updateUIForRoles(); // Ensure delete buttons are visible for the right roles
+        updateUIForRoles();
         document.getElementById('back-to-kpi-summary').addEventListener('click', () => {
             container.classList.add('hidden');
             if(currentChartInstances.kpiChart) currentChartInstances.kpiChart.destroy();
@@ -3017,27 +3056,21 @@ document.addEventListener('DOMContentLoaded', () => {
         scoreModal.classList.add('flex');
     }
     
-    // Star Points Modal Functions
     function showStarPointsModal(userId) {
         const user = allUsers.find(u => u.id === userId);
         if (!user) return;
         
-        // Get current star counts
         const smallStars = user.smallStars || 0;
         const bigStars = user.bigStars || 0;
         
-        // Update modal display
         document.getElementById('current-small-stars').textContent = smallStars;
         document.getElementById('current-big-stars').textContent = bigStars;
         
-        // Update progress bar
-        const progressPercent = (smallStars % 10) * 10; // 10% per star
+        const progressPercent = (smallStars % 10) * 10;
         document.getElementById('star-progress-bar').style.width = `${progressPercent}%`;
         
-        // Store user ID for saving
         starPointsModal.dataset.userId = userId;
         
-        // Reset form
         document.getElementById('star-reason').value = 'ทำงานรวดเร็วและมีประสิทธิภาพ';
         document.getElementById('star-notes').value = '';
         
@@ -3068,11 +3101,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const smallStars = parseInt(document.getElementById('current-small-stars').textContent);
         const bigStars = parseInt(document.getElementById('current-big-stars').textContent);
         
-        // Update progress bar
-        const progressPercent = (smallStars % 10) * 10; // 10% per star
+        const progressPercent = (smallStars % 10) * 10;
         document.getElementById('star-progress-bar').style.width = `${progressPercent}%`;
         
-        // Check if user earned a big star
         if (smallStars >= 10) {
             const newBigStars = bigStars + Math.floor(smallStars / 10);
             const remainingSmallStars = smallStars % 10;
@@ -3092,13 +3123,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const notes = document.getElementById('star-notes').value;
         
         try {
-            // Update user's star counts
             await updateDoc(doc(db, "users", userId), {
                 smallStars: smallStars,
                 bigStars: bigStars
             });
             
-            // Save star points transaction
             await addDoc(collection(db, "starPoints"), {
                 userId: userId,
                 smallStars: smallStars,
@@ -3110,7 +3139,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: serverTimestamp()
             });
             
-            // Update local user data
             const userIndex = allUsers.findIndex(u => u.id === userId);
             if (userIndex !== -1) {
                 allUsers[userIndex].smallStars = smallStars;
@@ -3121,7 +3149,6 @@ document.addEventListener('DOMContentLoaded', () => {
             starPointsModal.classList.add('hidden');
             starPointsModal.classList.remove('flex');
             
-            // If we're in profile view, update the display
             if (views.profile.style.display === 'block' && currentUser.id === userId) {
                 renderProfileStarPoints();
             }
@@ -3186,7 +3213,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // --- Profile View Logic ---
     function renderProfileView() {
         if (currentUserProfile) {
             profileForm.querySelector('#profile-email').value = currentUserProfile.email;
@@ -3208,19 +3234,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const smallStars = currentUserProfile.smallStars || 0;
         const bigStars = currentUserProfile.bigStars || 0;
         
-        // Update star display
         document.getElementById('user-small-stars').textContent = smallStars;
         document.getElementById('user-big-stars').textContent = bigStars;
         
-        // Update progress bar
-        const progressPercent = (smallStars % 10) * 10; // 10% per star
+        const progressPercent = (smallStars % 10) * 10;
         document.getElementById('star-progress-bar').style.width = `${progressPercent}%`;
         
-        // Render achievement badges
         const achievementsContainer = document.getElementById('user-achievements');
         achievementsContainer.innerHTML = '';
         
-        // Add big star achievement badges
         for (let i = 0; i < bigStars; i++) {
             const badge = document.createElement('div');
             badge.className = 'achievement-badge';
@@ -3228,7 +3250,6 @@ document.addEventListener('DOMContentLoaded', () => {
             achievementsContainer.appendChild(badge);
         }
         
-        // Add next big star progress if user has some small stars but not enough for a big star
         if (smallStars > 0 && smallStars < 10) {
             const badge = document.createElement('div');
             badge.className = 'achievement-badge opacity-50';
@@ -3260,9 +3281,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('default-avatar')) {
             const url = e.target.dataset.url;
             profilePicPreview.src = url;
-            newProfilePicBase64 = url; // Use the same variable to store the selected URL
+            newProfilePicBase64 = url;
             
-            // Visually indicate selection
             document.querySelectorAll('.default-avatar').forEach(el => el.classList.remove('selected'));
             e.target.classList.add('selected');
         }
@@ -3272,7 +3292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         if (file && file.type.startsWith('image/')) {
             try {
-                const resizedBase64 = await resizeImage(file, 400, 400, 0.9); // Smaller size for profile pics
+                const resizedBase64 = await resizeImage(file, 400, 400, 0.9);
                 newProfilePicBase64 = resizedBase64;
                 profilePicPreview.src = resizedBase64;
                 document.querySelectorAll('.default-avatar').forEach(el => el.classList.remove('selected'));
@@ -3299,7 +3319,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const userDocRef = doc(db, "users", currentUser.uid);
             await updateDoc(userDocRef, updateData);
             
-            // Update local profile object
             Object.assign(currentUserProfile, updateData);
             updateUserDisplays(currentUserProfile);
             showNotification('อัปเดตโปรไฟล์สำเร็จ!');
@@ -3324,7 +3343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const checkedActivity = completedTransfersData
             .filter(t => t.lastCheckedByUid === currentUser.uid)
-            .map(t => ({...t, type: 'เช็คเสร็จ', timestamp: t.createdAt})); // Note: using createdAt for sorting consistency
+            .map(t => ({...t, type: 'เช็คเสร็จ', timestamp: t.createdAt}));
         const receivedActivity = completedTransfersData
             .filter(t => t.lastReceivedByUid === currentUser.uid)
             .map(t => ({...t, type: 'รับสินค้า', timestamp: t.createdAt}));
@@ -3425,8 +3444,6 @@ document.addEventListener('DOMContentLoaded', () => {
         button.disabled = true;
         button.innerHTML = `<div class="loading-spinner w-5 h-5 border-white border-t-transparent rounded-full inline-block mr-2"></div> กำลังลบ...`;
         try {
-            // Firestore batches are limited to 500 operations.
-            // This function will process documents in chunks of 400 to be safe.
             const deleteCollection = async (collectionRef) => {
                 let querySnapshot = await getDocs(query(collectionRef));
                 while (querySnapshot.size > 0) {
@@ -3435,7 +3452,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         batch.delete(doc.ref);
                     });
                     await batch.commit();
-                    querySnapshot = await getDocs(query(collectionRef)); // Re-fetch to see if any remain
+                    querySnapshot = await getDocs(query(collectionRef));
                 }
             };
             await deleteCollection(collection(db, "transfers"));
@@ -3513,10 +3530,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         restoreDataBtn.disabled = true;
                         restoreDataBtn.innerHTML = `<div class="loading-spinner w-5 h-5 border-white border-t-transparent rounded-full inline-block mr-2"></div> กำลังกู้คืน...`;
                         
-                        // This is a simplified restore. A real-world scenario would need more robust error handling and batching.
                         const batch = writeBatch(db);
                         data.transfers.forEach(item => {
-                            const { id, ...itemData } = item; // Separate ID from data
+                            const { id, ...itemData } = item;
                             batch.set(doc(db, "transfers", id), itemData);
                         });
                         data.issues.forEach(item => {
@@ -3551,7 +3567,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
-    // LOG Function
     async function logAction(action, details) {
         try {
             await addDoc(collection(db, "logs"), {
