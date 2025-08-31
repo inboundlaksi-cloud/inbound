@@ -19,94 +19,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
-
-// เพิ่ม object สำหรับเก็บข้อมูลการแปล
-const translations = {
-    th: {
-        "welcome": "ยินดีต้อนรับ",
-        "login": "เข้าสู่ระบบ",
-        // เพิ่มข้อความอื่นๆ
-    },
-    en: {
-        "welcome": "Welcome",
-        "login": "Login",
-        // เพิ่มข้อความอื่นๆ
-    }
-};
-
-// เพิ่ม simple cache system
-const cache = {
-    data: {},
-    set(key, value, ttl = 300000) {
-        this.data[key] = {
-            value,
-            expiry: Date.now() + ttl
-        };
-    },
-    get(key) {
-        const item = this.data[key];
-        if (!item) return null;
-        if (Date.now() > item.expiry) {
-            delete this.data[key];
-            return null;
-        }
-        return item.value;
-    }
-};
-
-// ปรับปรุงฟังก์ชัน applyLanguage
-function applyLanguage(language) {
-    currentLanguage = language;
-    document.querySelectorAll('[data-translate]').forEach(element => {
-        const key = element.getAttribute('data-translate');
-        if (translations[language] && translations[language][key]) {
-            element.textContent = translations[language][key];
-        }
-    });
-}
-
-// เพิ่ม lazy loading สำหรับรูปภาพ
-function lazyLoadImages() {
-    const images = document.querySelectorAll('img[data-src]');
-    const imageObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                img.src = img.dataset.src;
-                observer.unobserve(img);
-            }
-        });
-    });
-    images.forEach(img => imageObserver.observe(img));
-}
-
-// เพิ่มฟังก์ชันกรองข้อมูล
-function applyStatisticsFilters(filters) {
-    const { startDate, endDate, branch, user } = filters;
-    let filteredData = [...allTransfersData, ...completedTransfersData];
-    if (startDate) {
-        filteredData = filteredData.filter(t => {
-            const tDate = parseThaiDate(t.deliveryDate);
-            return tDate && tDate >= new Date(startDate);
-        });
-    }
-    if (endDate) {
-        filteredData = filteredData.filter(t => {
-            const tDate = parseThaiDate(t.deliveryDate);
-            return tDate && tDate <= new Date(endDate);
-        });
-    }
-    if (branch) {
-        filteredData = filteredData.filter(t => t.branch === branch);
-    }
-    if (user) {
-        filteredData = filteredData.filter(t =>
-            t.createdByUid === user || t.lastCheckedByUid === user
-        );
-    }
-    updateStatisticsWithFilteredData(filteredData);
-}
-
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     const payload = {
@@ -169,44 +81,12 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
-
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
     if (loadingContainer) {
         loadingContainer.style.display = 'none';
     }
-    
-    // Initialize lazy loading for images
-    lazyLoadImages();
-    
-    // Add settings button event listeners
-    document.getElementById('settings-button')?.addEventListener('click', () => {
-        settingsModal.classList.remove('hidden');
-        settingsModal.classList.add('flex');
-        // Load current settings
-        if (currentUserProfile) {
-            const preferences = currentUserProfile.preferences || {};
-            document.getElementById('theme-select').value = preferences.theme || 'light';
-            document.getElementById('language-select').value = preferences.language || 'th';
-        }
-    });
-    
-    document.getElementById('settings-save-btn')?.addEventListener('click', async () => {
-        const theme = document.getElementById('theme-select').value;
-        const language = document.getElementById('language-select').value;
-        try {
-            await updateDoc(doc(db, "users", currentUser.uid), {
-                preferences: { theme, language }
-            });
-            showNotification('บันทึกการตั้งค่าสำเร็จ');
-            settingsModal.classList.add('hidden');
-            // Apply language change
-            applyLanguage(language);
-        } catch (error) {
-            showNotification('เกิดข้อผิดพลาด', false);
-        }
-    });
     
     const views = {
         loginRegister: document.getElementById('login-register-view'),
@@ -251,7 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const profilePicPreview = document.getElementById('profile-pic-preview');
     const defaultAvatarContainer = document.getElementById('default-avatar-container');
     const backupModal = document.getElementById('backup-modal');
-    const settingsModal = document.getElementById('settings-modal');
     let currentChartInstances = {};
     let isAdmin = false;
     let currentUser = null;
@@ -272,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let confirmCallback = null;
     let uploadedImagesBase64 = [];
     let newProfilePicBase64 = null;
-    let currentLanguage = 'th'; // เพิ่มตัวแปรสำหรับเก็บภาษาปัจจุบัน
     
     function showNotification(message, isSuccess = true) {
         const toast = document.getElementById('notification-toast');
@@ -300,6 +178,9 @@ document.addEventListener('DOMContentLoaded', () => {
         registerTab.classList.toggle('bg-fuchsia-600', formToShow === 'register');
         registerTab.classList.toggle('text-white', formToShow === 'register');
     }
+    
+    loginTab.addEventListener('click', () => showAuthForm('login'));
+    registerTab.addEventListener('click', () => showAuthForm('register'));
     
     function updateUserDisplays(profile) {
         const displayElements = document.querySelectorAll('.user-display');
@@ -354,80 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // เพิ่มฟังก์ชันสำหรับสร้างปุ่มต่างๆ
-    function addDocumentationButton() {
-        // สร้างปุ่มสำหรับเข้าถึงเอกสาร
-        const docButton = document.createElement('button');
-        docButton.className = 'fixed bottom-6 right-6 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 z-40';
-        docButton.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`;
-        docButton.title = 'เอกสารประกอบ';
-        docButton.addEventListener('click', () => {
-            window.open('/documentation.html', '_blank');
-        });
-        document.body.appendChild(docButton);
-    }
-    
-    function addUserManagementButton() {
-        // สร้างปุ่มสำหรับจัดการผู้ใช้ (เฉพาะ Admin)
-        if (currentUserProfile && (currentUserProfile.role === 'Admin' || currentUserProfile.role === 'Supervisor')) {
-            const userMgmtButton = document.createElement('button');
-            userMgmtButton.className = 'fixed bottom-6 right-24 bg-purple-500 text-white p-3 rounded-full shadow-lg hover:bg-purple-600 z-40 admin-supervisor-only';
-            userMgmtButton.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>`;
-            userMgmtButton.title = 'จัดการผู้ใช้';
-            userMgmtButton.addEventListener('click', () => {
-                renderKpiView();
-                showMainView(views.kpi);
-            });
-            document.body.appendChild(userMgmtButton);
-        }
-    }
-    
-    function setupQuickActionButtons() {
-        // สร้างปุ่มลัดสำหรับการทำงาน
-        const quickActionsContainer = document.createElement('div');
-        quickActionsContainer.className = 'fixed bottom-24 right-6 flex flex-col space-y-3 z-40';
-        
-        // ปุ่มสร้าง TFOR ใหม่
-        const newTforButton = document.createElement('button');
-        newTforButton.className = 'bg-fuchsia-500 text-white p-3 rounded-full shadow-lg hover:bg-fuchsia-600';
-        newTforButton.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>`;
-        newTforButton.title = 'สร้าง TFOR ใหม่';
-        newTforButton.addEventListener('click', () => {
-            showMainView(views.transfers);
-            initializeForm();
-            showSubView(formView);
-        });
-        
-        // ปุ่มสแกน QR Code
-        const scanButton = document.createElement('button');
-        scanButton.className = 'bg-green-500 text-white p-3 rounded-full shadow-lg hover:bg-green-600';
-        scanButton.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>`;
-        scanButton.title = 'สแกน QR Code';
-        scanButton.addEventListener('click', () => {
-            // ฟังก์ชันสำหรับเปิดกล้องสแกน
-            showNotification('ฟีเจอร์สแกน QR Code จะเปิดใช้งานเร็วๆ นี้');
-        });
-        
-        quickActionsContainer.appendChild(newTforButton);
-        quickActionsContainer.appendChild(scanButton);
-        document.body.appendChild(quickActionsContainer);
-    }
-    
-    // เพิ่มฟังก์ชันสำหรับบันทึกกิจกรรมของระบบ
-    async function logSystemActivity(action, details) {
-        try {
-            await addDoc(collection(db, "systemLogs"), {
-                action: action,
-                details: details,
-                userId: currentUser.uid,
-                userName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: serverTimestamp()
-            });
-        } catch (error) {
-            console.error("Error logging system activity:", error);
-        }
-    }
-    
     onAuthStateChanged(auth, async (user) => {
         currentUser = user;
         if (user) {
@@ -463,17 +270,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             updateUserDisplays(currentUserProfile);
-            addDocumentationButton();
-            addUserManagementButton();
-            setupQuickActionButtons();
-            updateUIForRoles(); // เรียกตรงนี้หลังสร้าง UI ทั้งหมด
+            updateUIForRoles();
             setupFirestoreListeners();
             showMainView(views.mainMenu);
-            
-            // Apply saved language preference
-            if (currentUserProfile.preferences && currentUserProfile.preferences.language) {
-                applyLanguage(currentUserProfile.preferences.language);
-            }
         } else {
             detachFirestoreListeners();
             currentUserProfile = null;
@@ -574,17 +373,10 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingContainer.style.display = 'flex';
         
         signInWithEmailAndPassword(auth, loginForm['login-email'].value, loginForm['login-password'].value)
-            .then(async (userCredential) => {
-                const user = userCredential.user;
+            .then(() => {
                 showNotification('เข้าสู่ระบบสำเร็จ!');
                 // Hide loading spinner after successful login
                 loadingContainer.style.display = 'none';
-                
-                // Log user login activity
-                await logSystemActivity('USER_LOGIN', {
-                    userId: user.uid,
-                    email: user.email
-                });
             })
             .catch((error) => {
                 showNotification(`เข้าสู่ระบบไม่สำเร็จ: ${error.message}`, false);
@@ -611,24 +403,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastName,
                 email,
                 role: 'Officer', // Default role
-                status: 'pending', // เพิ่ม status
                 smallStars: 0,
-                bigStars: 0,
-                createdAt: serverTimestamp()
+                bigStars: 0
             });
-            
-            // สร้าง notification สำหรับ admin
-            const admins = allUsers.filter(u => u.role === 'Admin');
-            for (const admin of admins) {
-                await addDoc(collection(db, "notifications"), {
-                    type: 'NEW_USER_APPROVAL',
-                    title: 'ผู้ใช้ใหม่รอการอนุมัติ',
-                    userId: admin.id,
-                    read: false,
-                    timestamp: serverTimestamp()
-                });
-            }
-            
             showNotification('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
             showAuthForm('login');
             // Hide loading spinner after successful registration
@@ -680,10 +457,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const todaysPlanCount = allTransfersData.filter(t => t.scheduledDate === todayString).length;
         const completedTodayCount = completedTransfersData.filter(t => t.completionDate === todayString).length;
         
+        // แสดงรายการมีปัญหาทั้งหมด (ไม่กรองเฉพาะวันนี้)
+        const allIssues = Object.values(issuesData).flat();
+        
         // แสดงรายการมีปัญหาเฉพาะภายในวันนั้นๆ
-        const todayIssues = Object.values(issuesData)
-            .flat()
-            .filter(issue => issue.reportDate === todayString);
+        const todayIssues = allIssues.filter(issue => issue.reportDate === todayString);
         const issuesCount = todayIssues.length;
         
         document.getElementById('summary-todays-plan').textContent = todaysPlanCount;
@@ -878,11 +656,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         tforBlock.querySelector('.remove-tfor-button').addEventListener('click', () => tforBlock.remove());
+
         // Listeners for Linked TFORs
         const addBtn = tforBlock.querySelector('.add-linked-tfor-btn');
         const input = tforBlock.querySelector('.linked-tfor-input');
         const list = tforBlock.querySelector('.linked-tfor-list');
         const year = new Date().getFullYear().toString().substr(-2);
+
         addBtn.addEventListener('click', () => {
             const tforValue = input.value.trim();
             if (tforValue && /^\d{4}$/.test(tforValue)) {
@@ -946,6 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const palletNotes = block.querySelector('.pallet-notes').value;
                 const linkedTforElements = block.querySelectorAll('.linked-tfor-list span');
                 const linkedTfors = Array.from(linkedTforElements).map(span => span.textContent);
+
                 const tforData = {
                     deliveryDate, licensePlate,
                     images: uploadedImagesBase64,
@@ -987,15 +768,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             await batch.commit();
-            
-            // Log TFOR creation activity
-            await logSystemActivity('TFOR_CREATED', {
-                userId: currentUser.uid,
-                userName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                tforCount: tforBlocks.length,
-                timestamp: new Date().toISOString()
-            });
-            
             showNotification('บันทึกข้อมูลสำเร็จแล้ว!');
             showSubView(detailsView);
         } catch (error) {
@@ -1034,11 +806,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             // Log the action
-            await logSystemActivity('PALLET_CHECKED', {
+            await logAction('เช็คพาเลท', {
                 transferId: currentTforData.id,
                 palletNumber: palletNum,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
+                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
             });
             
             if (isNowCompleted) {
@@ -1079,11 +850,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             // Log the action
-            await logSystemActivity('PALLET_RECEIVED', {
+            await logAction('รับสินค้า', {
                 transferId: currentTforData.id,
                 palletNumber: palletNum,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
+                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
             });
             
             if (isAllReceived) {
@@ -1121,10 +891,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             // Log the action
-            await logSystemActivity('ALL_PALLETS_RECEIVED', {
+            await logAction('รับสินค้าทั้งหมด', {
                 transferId: currentTforData.id,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
+                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
             });
             
             showNotification('รับสินค้าครบถ้วนแล้ว!');
@@ -1164,11 +933,10 @@ document.addEventListener('DOMContentLoaded', () => {
             await batch.commit();
             
             // Log the action
-            await logSystemActivity('ISSUE_REPORTED', {
+            await logAction('รายงานปัญหา', {
                 transferId: currentTforData.id,
                 palletNumber: palletNum,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
+                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
             });
             
             showNotification(`บันทึกปัญหาสำหรับพาเลทที่ ${palletNum} เรียบร้อยแล้ว!`);
@@ -1190,10 +958,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 await batch.commit();
                 
                 // Log the action
-                await logSystemActivity('TRANSFER_DELETED', {
+                await logAction('ลบรายการ TFOR', {
                     transferId: transferId,
-                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    timestamp: new Date().toISOString()
+                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
                 });
                 
                 showNotification("ลบรายการสำเร็จ");
@@ -1210,10 +977,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 await deleteDoc(doc(db, "issues", issueId));
                 
                 // Log the action
-                await logSystemActivity('ISSUE_DELETED', {
+                await logAction('ลบปัญหา', {
                     issueId: issueId,
-                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    timestamp: new Date().toISOString()
+                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
                 });
                 
                 showNotification("ลบปัญหาสำเร็จ");
@@ -1398,12 +1164,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // เพิ่ม event listener สำหรับปุ่มเปลี่ยนเดือน
         header.querySelector('#prev-month').addEventListener('click', () => {
             calendarPicker.remove();
-            showCalendarPickerForMonth(currentMonth - 1, currentYear);
+            const prevMonth = month - 1;
+            const prevYear = prevMonth < 0 ? year - 1 : year;
+            showCalendarPickerForMonth(prevMonth < 0 ? 11 : prevMonth, prevYear);
         });
         
         header.querySelector('#next-month').addEventListener('click', () => {
             calendarPicker.remove();
-            showCalendarPickerForMonth(currentMonth + 1, currentYear);
+            const nextMonth = month + 1;
+            const nextYear = nextMonth > 11 ? year + 1 : year;
+            showCalendarPickerForMonth(nextMonth > 11 ? 0 : nextMonth, nextYear);
         });
         
         // เพิ่ม event listener สำหรับการคลิกนอกปฏิทินเพื่อปิด
@@ -1564,14 +1334,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     scheduledByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
                 });
                 
-                // Log scheduling activity
-                await logSystemActivity('TRANSFER_SCHEDULED', {
-                    transferId: transferData.id,
-                    scheduledDate: thaiDateString,
-                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    timestamp: new Date().toISOString()
-                });
-                
                 showNotification('วางแผนงานสำเร็จ');
                 document.getElementById('close-details-modal').click();
             } catch (error) {
@@ -1622,6 +1384,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="linked-tfor-display" class="mt-4"></div>
             <div class="mt-4"><p class="text-sm font-semibold text-gray-500 mb-2">รูปภาพรวม</p>${imagesHTML}</div>
         `;
+
         const linkedTforContainer = document.getElementById('linked-tfor-display');
         if (currentTforData.linkedTfors && currentTforData.linkedTfors.length > 0) {
             linkedTforContainer.innerHTML = `
@@ -1783,14 +1546,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 batch.set(doc(collection(db, "issues")), newIssue);
             }
             await batch.commit();
-            
-            // Log issue reporting activity
-            await logSystemActivity('ISSUES_REPORTED_FOR_TRANSFER', {
-                transferId: currentTforData.id,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
-            });
-            
             showNotification(`บันทึกปัญหาสำหรับ TFOR ...${currentTforData.tforNumber} เรียบร้อยแล้ว!`);
             formWrapper.remove();
             document.querySelectorAll('.issue-pallet-button').forEach(btn => btn.classList.remove('active'));
@@ -2253,14 +2008,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const transferId = e.target.dataset.id;
                 try {
                     await updateDoc(doc(db, "transfers", transferId), { scheduledDate: null, scheduledByUid: null, scheduledByName: null });
-                    
-                    // Log unscheduling activity
-                    await logSystemActivity('TRANSFER_UNSCHEDULED', {
-                        transferId: transferId,
-                        user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                        timestamp: new Date().toISOString()
-                    });
-                    
                     showNotification('ยกเลิกแผนงานสำเร็จ');
                     document.getElementById('close-details-modal').click();
                 } catch (error) {
@@ -2315,15 +2062,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
                 await batch.commit();
-                
-                // Log bulk scheduling activity
-                await logSystemActivity('BULK_TRANSFER_SCHEDULED', {
-                    transferIds: selectedIds,
-                    scheduledDate: dateString,
-                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    timestamp: new Date().toISOString()
-                });
-                
                 showNotification(`วางแผนงานสำหรับ ${selectedIds.length} รายการสำเร็จ!`);
                 document.getElementById('close-details-modal').click();
             } catch (error) {
@@ -2479,14 +2217,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             scheduledByUid: null, 
                             scheduledByName: null 
                         });
-                        
-                        // Log unscheduling activity
-                        await logSystemActivity('TRANSFER_UNSCHEDULED', {
-                            transferId: transfer.id,
-                            user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                            timestamp: new Date().toISOString()
-                        });
-                        
                         showNotification('ยกเลิกแผนงานสำเร็จ');
                         renderTodaysPlanView(); // Refresh the view
                     } catch (error) {
@@ -2898,14 +2628,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             await html2pdf().from(exportContent).set(opt).save();
-            
-            // Log PDF export activity
-            await logSystemActivity('PDF_EXPORTED', {
-                timeframe: timeframe,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
-            });
-            
             showNotification('ส่งออก PDF สำเร็จแล้ว');
         } catch (error) {
             console.error('PDF export error:', error);
@@ -3099,15 +2821,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const uid = e.target.dataset.uid;
                 try {
                     await updateDoc(doc(db, "users", uid), { role: newRole });
-                    
-                    // Log role change activity
-                    await logSystemActivity('USER_ROLE_CHANGED', {
-                        userId: uid,
-                        newRole: newRole,
-                        user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                        timestamp: new Date().toISOString()
-                    });
-                    
                     showNotification('อัปเดตตำแหน่งสำเร็จ');
                 } catch (error) {
                     showNotification('เกิดข้อผิดพลาด', false);
@@ -3139,13 +2852,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Delete the user document from Firestore
             await deleteDoc(doc(db, "users", uid));
-            
-            // Log user deletion activity
-            await logSystemActivity('USER_DELETED', {
-                userId: uid,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
-            });
             
             // Remove the user from the local allUsers array
             allUsers = allUsers.filter(user => user.id !== uid);
@@ -3298,14 +3004,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function deleteScore(scoreId) {
         try {
             await deleteDoc(doc(db, "scores", scoreId));
-            
-            // Log score deletion activity
-            await logSystemActivity('SCORE_DELETED', {
-                scoreId: scoreId,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
-            });
-            
             showNotification("ลบคะแนนสำเร็จ");
         } catch (error) {
             showNotification("เกิดข้อผิดพลาดในการลบคะแนน", false);
@@ -3417,16 +3115,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: serverTimestamp()
             });
             
-            // Log star points award activity
-            await logSystemActivity('STAR_POINTS_AWARDED', {
-                userId: userId,
-                smallStars: smallStars,
-                bigStars: bigStars,
-                reason: reason,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
-            });
-            
             // Update local user data
             const userIndex = allUsers.findIndex(u => u.id === userId);
             if (userIndex !== -1) {
@@ -3494,16 +3182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         try {
             await addDoc(collection(db, "scores"), scoreData);
-            
-            // Log score award activity
-            await logSystemActivity('SCORE_AWARDED', {
-                userId: scoreData.userId,
-                score: scoreValue,
-                reason: reason,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
-            });
-            
             showNotification('บันทึกคะแนนสำเร็จ!');
             scoreModal.classList.add('hidden');
             scoreModal.classList.remove('flex');
@@ -3768,12 +3446,6 @@ document.addEventListener('DOMContentLoaded', () => {
             await deleteCollection(collection(db, "transfers"));
             await deleteCollection(collection(db, "issues"));
             
-            // Log data deletion activity
-            await logSystemActivity('ALL_INBOUND_DATA_DELETED', {
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: new Date().toISOString()
-            });
-            
             showNotification("ลบข้อมูลของเข้าและปัญหาทั้งหมดสำเร็จ");
         } catch (error) {
             console.error("Error deleting all data:", error);
@@ -3802,35 +3474,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     document.getElementById('backup-data-btn').addEventListener('click', async () => {
-        try {
-            // ... existing backup code ...
-            await logSystemActivity('BACKUP_CREATED', {
-                userId: currentUser.uid,
-                timestamp: new Date().toISOString()
-            });
-            
-            const allData = {
-                transfers: [...allTransfersData, ...completedTransfersData],
-                issues: Object.values(issuesData).flat(),
-                scores: allScores,
-                users: allUsers,
-                starPoints: allStarPoints
-            };
-             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allData, null, 2));
-             const downloadAnchorNode = document.createElement('a');
-             downloadAnchorNode.setAttribute("href", dataStr);
-             downloadAnchorNode.setAttribute("download", `inbound_backup_${new Date().toISOString().split('T')[0]}.json`);
-             document.body.appendChild(downloadAnchorNode);
-             downloadAnchorNode.click();
-             document.body.removeChild(downloadAnchorNode);
-             showNotification("กำลังดาวน์โหลดไฟล์ Backup...");
-        } catch (error) {
-            await logSystemActivity('BACKUP_FAILED', {
-                userId: currentUser.uid,
-                error: error.message
-            });
-            showNotification("เกิดข้อผิดพลาดในการสร้างข้อมูลสำรอง: " + error.message, false);
-        }
+        const allData = {
+            transfers: [...allTransfersData, ...completedTransfersData],
+            issues: Object.values(issuesData).flat(),
+            scores: allScores,
+            users: allUsers,
+            starPoints: allStarPoints
+        };
+         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allData, null, 2));
+         const downloadAnchorNode = document.createElement('a');
+         downloadAnchorNode.setAttribute("href", dataStr);
+         downloadAnchorNode.setAttribute("download", `inbound_backup_${new Date().toISOString().split('T')[0]}.json`);
+         document.body.appendChild(downloadAnchorNode);
+         downloadAnchorNode.click();
+         document.body.removeChild(downloadAnchorNode);
+         showNotification("กำลังดาวน์โหลดไฟล์ Backup...");
     });
     
     const restoreFileInput = document.getElementById('restore-file-input');
@@ -3879,13 +3537,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             batch.set(doc(db, "starPoints", id), itemData);
                         });
                         await batch.commit();
-                        
-                        // Log data restore activity
-                        await logSystemActivity('DATA_RESTORED', {
-                            user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                            timestamp: new Date().toISOString()
-                        });
-                        
                         showNotification("กู้คืนข้อมูลสำเร็จ!");
                         backupModal.classList.add('hidden');
                         backupModal.classList.remove('flex');
@@ -3917,40 +3568,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error("Error logging action:", error);
-        }
-    }
-    
-    // Function to update statistics with filtered data
-    function updateStatisticsWithFilteredData(filteredData) {
-        // Update statistics display with filtered data
-        const totalInbound = filteredData.length;
-        const totalCompleted = filteredData.filter(d => d.isCompleted).length;
-        const totalReceived = filteredData.filter(d => d.isReceived).length;
-        const totalPallets = filteredData.reduce((sum, item) => sum + (item.palletCount || 0), 0);
-        
-        // Update UI elements with new values
-        document.querySelector('[data-stat="total-inbound"]')?.textContent = totalInbound;
-        document.querySelector('[data-stat="total-completed"]')?.textContent = totalCompleted;
-        document.querySelector('[data-stat="total-received"]')?.textContent = totalReceived;
-        document.querySelector('[data-stat="total-pallets"]')?.textContent = totalPallets;
-        
-        // Update charts if they exist
-        if (currentChartInstances.branchChart) {
-            const branchCounts = filteredData.reduce((acc, t) => {
-                if(t.branch) acc[t.branch] = (acc[t.branch] || 0) + 1;
-                return acc;
-            }, {});
-            currentChartInstances.branchChart.data.datasets[0].data = Object.values(branchCounts);
-            currentChartInstances.branchChart.update();
-        }
-        
-        if (currentChartInstances.statusChart) {
-            currentChartInstances.statusChart.data.datasets[0].data = [
-                totalCompleted,
-                totalReceived,
-                totalInbound - totalCompleted
-            ];
-            currentChartInstances.statusChart.update();
         }
     }
 });
