@@ -359,7 +359,6 @@ tr:hover {
     width: 320px;
     display: none;
 }
-
 .calendar-picker.active {
     display: block;
 }
@@ -404,22 +403,60 @@ tr:hover {
     font-weight: bold;
     color: #8b5cf6;
 }
+/* Calendar Tooltip Styles */
+.calendar-day {
+    position: relative;
+}
+
+.calendar-tooltip {
+    position: absolute;
+    z-index: 10;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 10px;
+    max-width: 250px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    top: 100%; /* Position below the day cell */
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 5px;
+}
+
+.calendar-day:hover .calendar-tooltip {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.calendar-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 8px 8px 8px;
+    border-style: solid;
+    border-color: transparent transparent white transparent;
+}
 
 /* Custom Scrollbar for Comments */
 #comments-display::-webkit-scrollbar {
-  width: 8px;
+    width: 8px;
 }
 
 #comments-display::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
+    background: #f1f1f1;
+    border-radius: 10px;
 }
 
 #comments-display::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 10px;
+    background: #ccc;
+    border-radius: 10px;
 }
 
 #comments-display::-webkit-scrollbar-thumb:hover {
-  background: #aaa;
+    background: #aaa;
 }
