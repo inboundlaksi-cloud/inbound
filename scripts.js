@@ -6,12 +6,12 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, creat
 import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
-  authDomain: "inbound-system-prod.firebaseapp.com",
-  projectId: "inbound-system-prod",
-  storageBucket: "inbound-system-prod.firebasestorage.app",
-  messagingSenderId: "1080446836155",
-  appId: "1:1080446836155:web:da8d3f12f76d83b408389e"
+    apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
+    authDomain: "inbound-system-prod.firebaseapp.com",
+    projectId: "inbound-system-prod",
+    storageBucket: "inbound-system-prod.firebasestorage.app",
+    messagingSenderId: "1080446836155",
+    appId: "1:1080446836155:web:da8d3f12f76d83b408389e"
 };
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -568,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleFiles(files, previewContainer, imageArray) {
         for (const file of files) {
             if (file.type.startsWith('image/')) {
-                 try {
+                try {
                     const resizedBase64 = await resizeImage(file);
                     imageArray.push(resizedBase64);
                     
@@ -996,10 +996,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filter) {
             const lowerCaseFilter = filter.toLowerCase();
             filteredData = filteredData.filter(d => 
-                (d.tforNumber || '').endsWith(filter) || 
+                (d.tforNumber || '').toLowerCase().includes(lowerCaseFilter) || 
                 (d.licensePlate || '').toLowerCase().includes(lowerCaseFilter) ||
                 (d.branch || '').toLowerCase().includes(lowerCaseFilter) ||
-                (d.linkedTfors && d.linkedTfors.some(lt => lt.toLowerCase().includes(lowerCaseFilter)))
+                (d.linkedTfors && d.linkedTfors.some(lt => 
+                    lt.toLowerCase().includes(lowerCaseFilter) || 
+                    lt.toLowerCase().endsWith(lowerCaseFilter)
+                ))
             );
         }
         if (sortBy === 'date-desc') filteredData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
@@ -1014,6 +1017,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">TFOR</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">TFOR พ่วง</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สาขาต้นทาง</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ทะเบียนรถ</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">จำนวนพาเลท</th>
@@ -1026,7 +1030,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let statusText = 'ยังไม่เช็ค';
             let statusColor = 'bg-gray-100 text-gray-800';
             
-            // New status for "รอรับสินค้า" (waiting for product receipt)
             if (data.checkedPallets && data.checkedPallets.length > 0 && !data.isReceived) {
                 statusText = 'รอรับสินค้า';
                 statusColor = 'bg-blue-100 text-blue-800';
@@ -1038,12 +1041,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusColor = 'bg-yellow-100 text-yellow-800';
             }
             
+            const linkedTforsHtml = data.linkedTfors && data.linkedTfors.length > 0 
+                ? data.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')
+                : '-';
+            
             const row = tbody.insertRow();
             row.className = 'hover:bg-gray-50 cursor-pointer';
             row.innerHTML = `
                 <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">${statusText}</span></td>
                 <td class="px-6 py-4 text-sm">${formatDateAbbreviated(data.deliveryDate)}</td>
                 <td class="px-6 py-4 text-sm">...${data.tforNumber}</td>
+                <td class="px-6 py-4 text-sm">${linkedTforsHtml}</td>
                 <td class="px-6 py-4 text-sm">${data.branch}</td>
                 <td class="px-6 py-4 text-sm">${data.licensePlate}</td>
                 <td class="px-6 py-4 text-sm">${data.palletCount}</td>
@@ -1055,7 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showSubView(checkView);
             });
             
-            const adminCell = row.cells[7];
+            const adminCell = row.cells[8];
             const deleteButton = document.createElement('button');
             deleteButton.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`;
             deleteButton.className = 'text-red-500 hover:text-red-700';
@@ -1275,6 +1283,11 @@ document.addEventListener('DOMContentLoaded', () => {
             dueDateString = dueDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
         }
         
+        // แสดง TFOR พ่วง
+        const linkedTforsHtml = transferData.linkedTfors && transferData.linkedTfors.length > 0 
+            ? transferData.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')
+            : 'ไม่มี';
+        
         let modalHtml = `
             <button id="close-details-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
             <h3 class="text-lg font-bold mb-3">วางแผนงานสำหรับ TFOR ...${transferData.tforNumber}</h3>
@@ -1285,6 +1298,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>วันที่มาถึง: ${transferData.deliveryDate}</p>
                 <p class="text-red-600">ควรเช็คก่อนวันที่: ${dueDateString}</p>
                 <p>จำนวนพาเลท: ${transferData.palletCount}</p>
+                <p>TFOR พ่วง: ${linkedTforsHtml}</p>
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">เลือกวันที่ต้องการวางแผน</label>
@@ -1857,6 +1871,50 @@ document.addEventListener('DOMContentLoaded', () => {
             const scheduledOnDay = allTransfersData.filter(t => t.scheduledDate === currentDateString);
             const completedOnDay = completedTransfersData.filter(t => parseThaiDate(t.completionDate)?.toDateString() === currentDate.toDateString());
             
+            // สร้าง tooltip สำหรับแสดงข้อมูลเมื่อ hover
+            let tooltipContent = '';
+            if (scheduledOnDay.length > 0) {
+                tooltipContent += `<div class="font-semibold text-purple-600">งานที่วางแผน:</div>`;
+                scheduledOnDay.forEach(t => {
+                    tooltipContent += `<div class="text-sm">• TFOR ...${t.tforNumber} (${t.branch})</div>`;
+                });
+            }
+            if (newEntriesOnDay.length > 0) {
+                if (tooltipContent) tooltipContent += '<div class="mt-2"></div>';
+                tooltipContent += `<div class="font-semibold text-blue-600">TFORs ใหม่:</div>`;
+                newEntriesOnDay.forEach(t => {
+                    tooltipContent += `<div class="text-sm">• TFOR ...${t.tforNumber} (${t.branch})</div>`;
+                });
+            }
+            if (completedOnDay.length > 0) {
+                if (tooltipContent) tooltipContent += '<div class="mt-2"></div>';
+                tooltipContent += `<div class="font-semibold text-green-600">เสร็จสิ้น:</div>`;
+                completedOnDay.forEach(t => {
+                    tooltipContent += `<div class="text-sm">• TFOR ...${t.tforNumber} (${t.branch})</div>`;
+                });
+            }
+            
+            // สร้าง tooltip element
+            if (tooltipContent) {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'calendar-tooltip hidden absolute bg-white shadow-lg rounded-lg p-3 z-10 text-left max-w-xs';
+                tooltip.innerHTML = tooltipContent;
+                tooltip.style.top = '100%';
+                tooltip.style.left = '50%';
+                tooltip.style.transform = 'translateX(-50%)';
+                tooltip.style.marginTop = '5px';
+                
+                // เพิ่ม event listeners สำหรับการ hover
+                dayEl.addEventListener('mouseenter', () => {
+                    tooltip.classList.remove('hidden');
+                });
+                dayEl.addEventListener('mouseleave', () => {
+                    tooltip.classList.add('hidden');
+                });
+                
+                dayEl.appendChild(tooltip);
+            }
+            
             const dotsContainer = document.createElement('div');
             dotsContainer.className = 'event-dots-container';
             if (newEntriesOnDay.length > 0) dotsContainer.innerHTML += '<div class="event-dot event-dot-blue"></div>';
@@ -1883,8 +1941,17 @@ document.addEventListener('DOMContentLoaded', () => {
             hasContent = true;
             modalHtml += '<h4 class="font-semibold mt-4 text-purple-600">งานที่วางแผนไว้</h4><div class="space-y-2 border-l-4 border-purple-200 pl-4 py-2">';
             scheduledOnDay.forEach(e => {
+                // แสดง TFOR พ่วง
+                const linkedTforsHtml = e.linkedTfors && e.linkedTfors.length > 0 
+                    ? e.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')
+                    : '';
+                
                 modalHtml += `<div class="p-2 bg-purple-50 rounded-md flex justify-between items-center hover:bg-purple-100 cursor-pointer calendar-task-item" data-id="${e.id}">
-                    <span><strong>TFOR:</strong> ...${e.tforNumber} (โดย ${e.scheduledByName || 'N/A'})</span>
+                    <div>
+                        <span><strong>TFOR:</strong> ...${e.tforNumber} (${e.branch})</span>
+                        ${linkedTforsHtml ? `<div class="mt-1"><strong>TFOR พ่วง:</strong> ${linkedTforsHtml}</div>` : ''}
+                        <div class="text-xs text-gray-500 mt-1">โดย ${e.scheduledByName || 'N/A'}</div>
+                    </div>
                     <button class="unschedule-btn text-xs text-red-500 hover:underline plan-work-permission" data-id="${e.id}">ยกเลิก</button>
                 </div>`;
             });
@@ -1895,8 +1962,16 @@ document.addEventListener('DOMContentLoaded', () => {
             hasContent = true;
             modalHtml += '<h4 class="font-semibold mt-4 text-blue-600">TFORs ที่มาถึง</h4><div class="space-y-2 border-l-4 border-blue-200 pl-4 py-2">';
             newEntriesOnDay.forEach(e => {
-                 modalHtml += `<div class="p-2 bg-blue-50 rounded-md hover:bg-blue-100 cursor-pointer calendar-task-item" data-id="${e.id}">
-                    <span><strong>TFOR:</strong> ...${e.tforNumber} (${e.branch})</span>
+                // แสดง TFOR พ่วง
+                const linkedTforsHtml = e.linkedTfors && e.linkedTfors.length > 0 
+                    ? e.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')
+                    : '';
+                
+                modalHtml += `<div class="p-2 bg-blue-50 rounded-md hover:bg-blue-100 cursor-pointer calendar-task-item" data-id="${e.id}">
+                    <div>
+                        <span><strong>TFOR:</strong> ...${e.tforNumber} (${e.branch})</span>
+                        ${linkedTforsHtml ? `<div class="mt-1"><strong>TFOR พ่วง:</strong> ${linkedTforsHtml}</div>` : ''}
+                    </div>
                 </div>`;
             });
             modalHtml += '</div>';
@@ -1905,8 +1980,9 @@ document.addEventListener('DOMContentLoaded', () => {
             hasContent = true;
             modalHtml += '<h4 class="font-semibold mt-4 text-green-600">TFORs ที่เช็คเสร็จ</h4><div class="space-y-2 border-l-4 border-green-200 pl-4 py-2">';
             completedOnDay.forEach(e => {
-                 modalHtml += `<div class="p-2 bg-green-50 rounded-md hover:bg-green-100 cursor-pointer calendar-task-item" data-id="${e.id}">
-                    <span><strong>TFOR:</strong> ...${e.tforNumber} (โดย ${e.lastCheckedByName || 'N/A'})</span>
+                modalHtml += `<div class="p-2 bg-green-50 rounded-md hover:bg-green-100 cursor-pointer calendar-task-item" data-id="${e.id}">
+                    <span><strong>TFOR:</strong> ...${e.tforNumber} (${e.branch})</span>
+                    <div class="text-xs text-gray-500 mt-1">โดย ${e.lastCheckedByName || 'N/A'}</div>
                 </div>`;
             });
             modalHtml += '</div>';
@@ -2203,7 +2279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function getStatsData(timeframe = 'month') {
-         const now = new Date();
+        const now = new Date();
         let startDate;
         if (timeframe === 'week') {
             startDate = new Date(now.setDate(now.getDate() - now.getDay()));
@@ -2578,8 +2654,8 @@ document.addEventListener('DOMContentLoaded', () => {
             row.palletNotes || ''
         ]);
         let csvContent = "data:text/csv;charset=utf-8,\uFEFF" // \uFEFF for BOM to handle Thai characters in Excel
-            + headers.join(",") + "\n" 
-            + rows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
+             + headers.join(",") + "\n" 
+             + rows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -2841,7 +2917,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </button>
                     </div>
                 </div>
-            `}).join('');
+                `}).join('');
         }
         container.innerHTML = `
             <button id="back-to-kpi-summary" class="mb-6 px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">← กลับไปที่สรุป</button>
@@ -3459,6 +3535,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         await batch.commit();
                         showNotification("กู้คืนข้อมูลสำเร็จ!");
                         backupModal.classList.add('hidden');
+                        backupModal.classList.remove('flex');
                     } else {
                         throw new Error("Invalid backup file format.");
                     }
@@ -3490,4 +3567,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
-
