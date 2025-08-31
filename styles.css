@@ -218,6 +218,7 @@ body {
     bottom: 0;
     background-color: rgba(255, 255, 255, 0.8);
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 9999;
@@ -229,6 +230,12 @@ body {
     border-top: 5px solid #a21caf;
     border-radius: 50%;
     animation: spin 1s linear infinite;
+}
+.loading-message {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #4f46e5;
+    font-weight: 500;
 }
 @keyframes spin {
     0% { transform: rotate(0deg); }
@@ -715,7 +722,6 @@ body.dark-mode .notification-item .notification-message {
 body.dark-mode .notification-item .notification-time {
     color: #6b7280;
 }
-
 /* Settings Modal Styles */
 #settings-modal,
 #user-approval-modal {
@@ -858,7 +864,6 @@ body.dark-mode .hover\:bg-gray-200:hover {
         justify-content: center;
     }
 }
-
 /* Language Selector Styles */
 .language-selector {
     position: relative;
@@ -895,7 +900,6 @@ body.dark-mode .hover\:bg-gray-200:hover {
 [data-translate].translating {
     opacity: 0.5;
 }
-
 /* Log Table Styles */
 .log-table {
     width: 100%;
