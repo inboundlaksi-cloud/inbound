@@ -23,7 +23,7 @@
     
     <div id="details-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-overlay">
         <div id="details-modal-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 relative max-h-[80vh] overflow-y-auto">
-            </div>
+        </div>
     </div>
     
     <div id="confirmation-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-overlay">
@@ -139,6 +139,90 @@
         </div>
     </div>
     
+    <div id="settings-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
+            <h3 class="text-xl font-bold mb-4">ตั้งค่าระบบ</h3>
+            <div class="space-y-6">
+                <!-- General Settings -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-3">ตั้งค่าทั่วไป</h4>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm font-medium text-gray-700">ภาษา</label>
+                            <select id="language-select" class="rounded-md border-gray-300 shadow-sm">
+                                <option value="th">ไทย</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm font-medium text-gray-700">ธีม</label>
+                            <select id="theme-select" class="rounded-md border-gray-300 shadow-sm">
+                                <option value="light">สว่าง</option>
+                                <option value="dark">มืด</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Notification Settings -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-3">การแจ้งเตือน</h4>
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="notify-new-tfor" class="form-checkbox h-4 w-4 text-fuchsia-600 rounded">
+                            <label for="notify-new-tfor" class="ml-2 text-sm text-gray-700">แจ้งเตือนเมื่อมี TFOR ใหม่</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="notify-issues" class="form-checkbox h-4 w-4 text-fuchsia-600 rounded">
+                            <label for="notify-issues" class="ml-2 text-sm text-gray-700">แจ้งเตือนเมื่อมีปัญหาใหม่</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="notify-due-date" class="form-checkbox h-4 w-4 text-fuchsia-600 rounded">
+                            <label for="notify-due-date" class="ml-2 text-sm text-gray-700">แจ้งเตือนเมื่อใกล้ถึงวันครบกำหนด</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performance Settings -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-3">ประสิทธิภาพ</h4>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm font-medium text-gray-700">จำนวนรายการต่อหน้า</label>
+                            <select id="items-per-page" class="rounded-md border-gray-300 shadow-sm">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="enable-caching" class="form-checkbox h-4 w-4 text-fuchsia-600 rounded" checked>
+                            <label for="enable-caching" class="ml-2 text-sm text-gray-700">เปิดใช้งานแคช</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-4 mt-8">
+                <button id="settings-cancel-btn" class="px-4 py-2 bg-gray-200 rounded-lg">ยกเลิก</button>
+                <button id="settings-save-btn" class="px-4 py-2 bg-fuchsia-600 text-white rounded-lg">บันทึก</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="user-approval-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
+            <h3 class="text-xl font-bold mb-4">จัดการผู้ใช้ที่รอการอนุมัติ</h3>
+            <div id="pending-users-container" class="space-y-4 max-h-96 overflow-y-auto">
+                <p class="text-gray-500 text-center">ไม่มีผู้ใช้ที่รอการอนุมัติ</p>
+            </div>
+            <div class="flex justify-end gap-4 mt-6">
+                <button id="user-approval-cancel-btn" class="px-4 py-2 bg-gray-200 rounded-lg">ปิด</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="pdf-export-container" class="hidden">
         <div id="pdf-export-content"></div>
     </div>
@@ -201,7 +285,7 @@
                     <div class="flex items-center space-x-4">
                          <div class="relative">
                             <button id="notification-bell" class="p-2 rounded-full hover:bg-gray-200 relative">
-                                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                                 <span id="notification-count" class="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
                             </button>
                             <div id="notification-panel" class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl p-2 hidden z-50 border">
@@ -209,15 +293,42 @@
                                     <h4 class="font-semibold text-gray-800">การแจ้งเตือน</h4>
                                 </div>
                                 <div id="notification-list" class="max-h-96 overflow-y-auto">
-                                    </div>
+                                </div>
                             </div>
                         </div>
+                        <button id="settings-button" class="p-2 rounded-full hover:bg-gray-200">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </button>
                         <button id="profile-button" class="px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">โปรไฟล์</button>
                         <button id="logout-button-main" class="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600">ออกจากระบบ</button>
                     </div>
                 </div>
             </header>
             <main class="container mx-auto px-4 py-8">
+                <!-- Quick Actions Section -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">การกระทำด่วน</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <button id="quick-create-tfor" class="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow flex flex-col items-center justify-center">
+                            <svg class="w-8 h-8 text-fuchsia-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            <span class="font-medium">สร้าง TFOR ใหม่</span>
+                        </button>
+                        <button id="quick-view-calendar" class="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow flex flex-col items-center justify-center">
+                            <svg class="w-8 h-8 text-blue-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span class="font-medium">ดูปฏิทิน</span>
+                        </button>
+                        <button id="quick-view-issues" class="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow flex flex-col items-center justify-center">
+                            <svg class="w-8 h-8 text-red-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span class="font-medium">ดูปัญหาล่าสุด</span>
+                        </button>
+                        <button id="quick-view-pending" class="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow flex flex-col items-center justify-center">
+                            <svg class="w-8 h-8 text-yellow-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span class="font-medium">ดูรายการรอดำเนินการ</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Summary Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 text-center">
                     <div id="summary-todays-plan-card" class="bg-white p-4 rounded-2xl shadow-lg cursor-pointer transition hover:shadow-xl hover:-translate-y-1">
                         <h4 class="font-semibold text-gray-600">งานประจำวันนี้</h4>
@@ -236,6 +347,15 @@
                         <p id="summary-issues" class="text-4xl font-bold text-red-500 mt-1">0</p>
                     </div>
                 </div>
+                
+                <!-- Mini Chart Section -->
+                <div class="bg-white p-6 rounded-2xl shadow-lg mb-8">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">แนวโน้มของของเข้า 7 วันล่าสุด</h3>
+                    <div class="h-64">
+                        <canvas id="mini-trend-chart"></canvas>
+                    </div>
+                </div>
+                
                 <div id="go-to-ai-chat" class="animated-icon p-6 bg-gradient-to-r from-fuchsia-500 to-indigo-600 rounded-3xl shadow-lg hover:shadow-2xl transition-all cursor-pointer text-white text-center mb-8 flex flex-col sm:flex-row items-center justify-center">
                     <svg class="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-0 sm:mr-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     <div>
@@ -263,7 +383,7 @@
                         <h3 class="font-semibold">สถิติ</h3>
                     </div>
                     <div id="go-to-kpi" data-permission="canViewKpi" class="animated-icon p-6 bg-white rounded-3xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                        <svg class="w-16 h-16 text-red-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19l7-7 7-7m-4-4l-4 4m4 4V4m0 18v-3m0 0h-4m4 0h4" /></svg>
+                        <svg class="w-16 h-16 text-red-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         <h3 class="font-semibold">KPI พนักงาน</h3>
                     </div>
                 </div>
@@ -319,7 +439,7 @@
                             <div>
                                 <p class="text-center text-sm text-gray-600 mb-4">หรือเลือกรูปโปรไฟล์พื้นฐาน</p>
                                 <div id="default-avatar-container" class="flex justify-center flex-wrap gap-4">
-                                    </div>
+                                </div>
                             </div>
                             <div>
                                 <label for="profile-email" class="block text-sm font-medium text-gray-700">อีเมล</label>
@@ -364,7 +484,7 @@
                         </div>
                         
                         <div id="user-achievements" class="flex flex-wrap justify-center">
-                            </div>
+                        </div>
                     </div>
                     
                     <div class="bg-white rounded-2xl shadow-lg p-8">
@@ -675,17 +795,152 @@
                         </button>
                     </div>
                 </div>
+                
+                <!-- Filters Section -->
+                <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+                    <h3 class="text-lg font-semibold mb-4">ตัวกรองข้อมูล</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">ช่วงวันที่</label>
+                            <div class="flex space-x-2">
+                                <input type="date" id="stats-start-date" class="flex-1 p-2 border rounded-lg">
+                                <span class="self-center">ถึง</span>
+                                <input type="date" id="stats-end-date" class="flex-1 p-2 border rounded-lg">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">สาขา</label>
+                            <select id="stats-branch-filter" class="w-full p-2 border rounded-lg">
+                                <option value="">ทุกสาขา</option>
+                                <option value="WH.40 (NDC)">WH.40 (NDC)</option>
+                                <option value="WH.61 Chiangmai">WH.61 Chiangmai</option>
+                                <option value="WH.62 Suratthani">WH.62 Suratthani</option>
+                                <option value="WH.63 Nakhon Ratchasima">WH.63 Nakhon Ratchasima</option>
+                                <option value="WH.64 Leamchabang">WH.64 Leamchabang</option>
+                                <option value="WH.65 Udon Thani">WH.65 Udon Thani</option>
+                                <option value="WH.66 Phitsanulok">WH.66 Phitsanulok</option>
+                                <option value="WH.67 Ratchaburi">WH.67 Ratchaburi</option>
+                                <option value="WH.68 Hat Yai">WH.68 Hat Yai</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">ผู้ใช้งาน</label>
+                            <select id="stats-user-filter" class="w-full p-2 border rounded-lg">
+                                <option value="">ทุกผู้ใช้</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button id="apply-filters-btn" class="px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700">ใช้ตัวกรอง</button>
+                    </div>
+                </div>
+                
                 <div id="statistics-report-container" class="bg-white rounded-2xl shadow-lg p-6">
                     <h2 id="report-title" class="text-2xl font-bold text-center mb-6">รายงานสรุปผล</h2>
                     <div id="statistics-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        </div>
+                    </div>
                     <div id="charts-container" class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        </div>
+                    </div>
                     <div data-permission="canManageSystem" class="mt-12 pt-8 border-t-2 border-dashed border-red-300 text-center">
                         <h3 class="text-xl font-bold text-red-600 mb-4">ส่วนของผู้ดูแลระบบ</h3>
                         <div class="flex justify-center gap-4">
                             <button id="backup-restore-btn" class="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:bg-gray-700">สำรอง / กู้คืนข้อมูล</button>
                             <button id="delete-all-data-btn" class="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:bg-red-700">ลบข้อมูลของเข้าทั้งหมด (เพื่อทดสอบ)</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+        
+        <div id="documentation-view" class="view">
+            <header class="bg-white shadow-sm">
+                <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="font-bold text-xl text-fuchsia-600">คู่มือการใช้งาน</h1>
+                        <span class="user-display hidden text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full"></span>
+                    </div>
+                    <button class="back-to-main-menu inline-flex items-center px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        กลับหน้าหลัก
+                    </button>
+                </div>
+            </header>
+            <main class="container mx-auto p-4">
+                <div class="bg-white rounded-2xl shadow-lg p-8">
+                    <h2 class="text-2xl font-bold mb-6">คู่มือการใช้งาน INBOUND SYSTEM</h2>
+                    
+                    <div class="space-y-8">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">การเข้าสู่ระบบ</h3>
+                            <ol class="list-decimal pl-6 space-y-2">
+                                <li>ใช้อีเมลและรหัสผ่านที่ลงทะเบียนไว้เพื่อเข้าสู่ระบบ</li>
+                                <li>หากลืมรหัสผ่าน สามารถติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน</li>
+                                <li>สำหรับการเข้าสู่ระบบครั้งแรก จะต้องรอการอนุมัติจากผู้ดูแลระบบ</li>
+                            </ol>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">การสร้าง TFOR</h3>
+                            <ol class="list-decimal pl-6 space-y-2">
+                                <li>คลิกที่เมนู "Transfers" จากหน้าหลัก</li>
+                                <li>เลือก "แบบฟอร์มลงข้อมูล"</li>
+                                <li>กรอกข้อมูลทะเบียนรถ วันที่รถมาส่ง</li>
+                                <li>อัปโหลดรูปภาพรวมบนรถ</li>
+                                <li>เพิ่มข้อมูล TFOR พร้อมระบุสาขาต้นทางและจำนวนพาเลท</li>
+                                <li>บันทึกข้อมูลเมื่อกรอกครบถ้วน</li>
+                            </ol>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">การเช็คสินค้า</h3>
+                            <ol class="list-decimal pl-6 space-y-2">
+                                <li>จากหน้าหลัก คลิกที่ "Transfers" แล้วเลือก "รายละเอียดข้อมูล"</li>
+                                <li>ค้นหา TFOR ที่ต้องการเช็ค</li>
+                                <li>คลิกที่รายการเพื่อเข้าสู่หน้าเช็คสินค้า</li>
+                                <li>กดปุ่มยืนยันการเช็คสำหรับพาเลทแต่ละอัน</li>
+                                <li>เมื่อเช็คครบทุกพาเลท ให้กดปุ่มรับสินค้า</li>
+                            </ol>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">การรายงานปัญหา</h3>
+                            <ol class="list-decimal pl-6 space-y-2">
+                                <li>ในหน้าเช็คสินค้า สามารถรายงานปัญหาได้ที่ส่วนล่าง</li>
+                                <li>เลือกประเภทของปัญหาที่พบ</li>
+                                <li>อัปโหลดรูปภาพประกอบ (ถ้ามี)</li>
+                                <li>กรอกรายละเอียดเพิ่มเติมเกี่ยวกับปัญหา</li>
+                                <li>บันทึกข้อมูลเพื่อส่งรายงาน</li>
+                            </ol>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">การดูสถิติ</h3>
+                            <ol class="list-decimal pl-6 space-y-2">
+                                <li>คลิกที่เมนู "สถิติ" จากหน้าหลัก</li>
+                                <li>เลือกช่วงเวลาที่ต้องการดู (สัปดาห์/เดือน/ปี)</li>
+                                <li>ใช้ตัวกรองข้อมูลเพื่อดูข้อมูลเฉพาะส่วน</li>
+                                <li>สามารถส่งออกข้อมูลเป็น PDF หรือ Excel ได้</li>
+                            </ol>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">การใช้งาน KPI</h3>
+                            <ol class="list-decimal pl-6 space-y-2">
+                                <li>คลิกที่เมนู "KPI พนักงาน" จากหน้าหลัก</li>
+                                <li>ดูสรุปคะแนนประสิทธิภาพของพนักงานแต่ละคน</li>
+                                <li>คลิกที่รายชื่อพนักงานเพื่อดูรายละเอียดเพิ่มเติม</li>
+                                <li>สำหรับผู้ดูแลระบบ สามารถให้คะแนนพิเศษได้</li>
+                            </ol>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">การตั้งค่าระบบ</h3>
+                            <ol class="list-decimal pl-6 space-y-2">
+                                <li>คลิกที่ไอคอนรูปเฟือง (Settings) ที่มุมขวามบน</li>
+                                <li>ปรับแต่งภาษาและธีมตามต้องการ</li>
+                                <li>ตั้งค่าการแจ้งเตือน</li>
+                                <li>ปรับแต่งการแสดงผลตามความต้องการ</li>
+                            </ol>
                         </div>
                     </div>
                 </div>
