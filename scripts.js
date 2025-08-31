@@ -205,24 +205,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentUserProfile) return;
         const role = currentUserProfile.role || 'Officer';
         const roles = {
-            'Admin': ['admin-only', 'admin-supervisor-only', 'senior-and-up', 'delete-permission'],
-            'Supervisor': ['admin-supervisor-only', 'senior-and-up', 'delete-permission'],
-            'Senior': ['senior-and-up'],
-            'Officer': [],
-            'Viewer': ['admin-supervisor-only', 'senior-and-up']
+            'Admin': ['admin-only', 'admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canManageSystem', 'canPlanWork', 'canComment'],
+            'Supervisor': ['admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canPlanWork', 'canComment'],
+            'Senior': ['senior-and-up', 'canViewKpi', 'canPlanWork', 'canComment'],
+            'Officer': ['canComment'],
+            'Viewer': []
         };
+        
         // Hide all role-based elements first
-        document.querySelectorAll('.admin-only, .admin-supervisor-only, .senior-and-up, .delete-permission, .plan-work-permission').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('[data-permission]').forEach(el => el.style.display = 'none');
         
         // Show elements based on the current user's role
         if (roles[role]) {
-            roles[role].forEach(className => {
-                document.querySelectorAll(`.${className}`).forEach(el => el.style.display = 'block'); // Or 'inline-block', 'flex' etc. as needed
+            roles[role].forEach(permission => {
+                document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
+                    el.style.display = 'block'; // Or 'inline-block', 'flex' etc. as needed
+                });
             });
-        }
-         // Special handling for planning permission
-        if (role !== 'Officer' && role !== 'Viewer') {
-             document.querySelectorAll('.plan-work-permission').forEach(el => el.style.display = 'block');
         }
         
         // Handle delete permissions specifically for senior and viewer roles
