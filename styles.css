@@ -1,546 +1,522 @@
-body {
-    font-family: 'Sarabun', 'Inter', sans-serif;
-    background: linear-gradient(135deg, #f0f9ff 0%, #cbebff 50%, #d8e6ff 100%);
-    min-height: 100vh;
-}
-.view { display: none; }
-.active-view { display: block; }
-@keyframes pulse-once {
-    0% { transform: scale(1); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-    50% { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); }
-    100% { transform: scale(1); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-}
-@keyframes spinner { to {transform: rotate(360deg);} }
-.animated-icon.pulse { animation: pulse-once 0.5s ease-in-out; }
-.loading-spinner { animation: spinner 1s linear infinite; }
-.password-container { position: relative; }
-.toggle-password { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); cursor: pointer; }
-#notification-toast { transition: transform 0.5s ease-in-out; }
-.chat-message-container { display: flex; flex-direction: column; gap: 1rem; }
-.chat-bubble { padding: 0.75rem 1rem; border-radius: 1.25rem; max-width: 80%; word-wrap: break-word; }
-.user-bubble { background-color: #bfdbfe; align-self: flex-end; }
-.ai-bubble { background-color: #e5e7eb; align-self: flex-start; }
-.modal-overlay { background-color: rgba(0, 0, 0, 0.5); }
-.pallet-button.active { background-color: #a21caf; color: white; transform: scale(1.1); }
-.calendar-day { 
-    transition: background-color 0.2s; 
-    position: relative;
-    padding-top: 0.5rem;
-    padding-bottom: 1.25rem;
-    min-height: 50px;
-    cursor: pointer;
-}
-.calendar-day:hover { background-color: #e0f2fe; }
-.calendar-day.today { background-color: #a5f3fc; border-radius: 0.5rem; }
-.event-dots-container {
-    position: absolute;
-    bottom: 4px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 4px;
-}
-.event-dot { width: 6px; height: 6px; border-radius: 50%; }
-.event-dot-blue { background-color: #3b82f6; } /* New Entry */
-.event-dot-green { background-color: #22c55e; } /* Completed */
-.event-dot-red { background-color: #ef4444; } /* Issue */
-.event-dot-purple { background-color: #8b5cf6; } /* Scheduled */
-/* Role-based visibility classes (Legacy, now handled by JS) */
-[data-permission] {
-    display: none;
-}
-.star-rating .star {
-    color: #d1d5db; /* gray-300 */
-    cursor: pointer;
-    font-size: 2rem;
-    transition: color 0.2s;
-}
-.star-rating .star.selected, .star-rating .star:hover {
-    color: #f59e0b; /* amber-500 */
-}
-.star-rating.deduction .star.selected, .star-rating.deduction .star:hover {
-    color: #ef4444; /* red-500 */
-}
-.default-avatar {
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    border: 2px solid transparent;
-}
-.default-avatar:hover {
-    transform: scale(1.1);
-}
-.default-avatar.selected {
-    border-color: #a21caf;
-    box-shadow: 0 0 10px rgba(162, 28, 175, 0.5);
-}
-/* Styles for PDF Export Content */
-#pdf-export-content {
-    font-family: 'Sarabun', sans-serif;
-    color: #333;
-    width: 100%;
-    font-size: 14px;
-}
-#pdf-export-content h1 { 
-    font-size: 24px; 
-    font-weight: bold; 
-    margin-bottom: 16px; 
-    text-align: center;
-    color: #4f46e5;
-}
-#pdf-export-content h2 { 
-    font-size: 18px; 
-    font-weight: bold; 
-    margin-top: 24px; 
-    margin-bottom: 12px; 
-    border-bottom: 1px solid #ccc; 
-    padding-bottom: 4px;
-    color: #4f46e5;
-}
-#pdf-export-content table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    font-size: 12px;
-    margin-bottom: 20px;
-}
-#pdf-export-content th, #pdf-export-content td { 
-    border: 1px solid #ddd; 
-    padding: 8px; 
-    text-align: left;
-}
-#pdf-export-content th { 
-    background-color: #f2f2f2;
-    font-weight: bold;
-}
-#pdf-export-content .chart-image { 
-    max-width: 90%; 
-    height: auto; 
-    display: block; 
-    margin: 20px auto;
-}
-#pdf-export-content .page-break { 
-    page-break-before: always;
-}
-#pdf-export-content .summary-card {
-    background-color: #f9fafb;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-#pdf-export-content .summary-card h3 {
-    margin-top: 0;
-    margin-bottom: 8px;
-    font-size: 16px;
-}
-#pdf-export-content .summary-card p {
-    margin: 0;
-    font-size: 14px;
-}
-#pdf-export-content .summary-value {
-    font-size: 20px;
-    font-weight: bold;
-    color: #4f46e5;
-}
-/* ปรับปรุงการแสดงผลตารางใน PDF */
-#pdf-export-content table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-#pdf-export-content .table-container {
-    overflow-x: auto;
-    margin-bottom: 20px;
-}
-/* Star System Styles */
-.star-display {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 15px 0;
-}
-.big-star {
-    color: #f59e0b;
-    font-size: 2.5rem;
-    text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-}
-.small-star {
-    color: #fbbf24;
-    font-size: 1.2rem;
-}
-.star-counter {
-    background-color: #f3f4f6;
-    border-radius: 8px;
-    padding: 8px 15px;
-    font-weight: bold;
-}
-.star-button {
-    padding: 8px 15px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.add-star-button {
-    background-color: #fbbf24;
-    color: #78350f;
-}
-.add-star-button:hover {
-    background-color: #f59e0b;
-    transform: scale(1.05);
-}
-.deduct-star-button {
-    background-color: #f87171;
-    color: #7f1d1d;
-}
-.deduct-star-button:hover {
-    background-color: #ef4444;
-    transform: scale(1.05);
-}
-.achievement-badge {
-    display: inline-flex;
-    align-items: center;
-    background-color: #fef3c7;
-    border: 2px solid #f59e0b;
-    border-radius: 20px;
-    padding: 5px 12px;
-    margin: 5px;
-    font-weight: bold;
-    color: #92400e;
-}
-.achievement-badge .big-star {
-    font-size: 1.5rem;
-    margin-right: 5px;
-}
-/* Loading Container */
-.loading-container {
+/* สไตล์สำหรับ Modal การเลือกพนักงาน */
+.employee-selection-modal,
+.issue-employee-selection-modal {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(255, 255, 255, 0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-.loading-spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #a21caf;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-/* Improved UI/UX */
-.button-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-table {
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-thead {
-    background-color: #f8fafc;
-}
-th, td {
-    padding: 12px 15px;
-}
-tr:hover {
-    background-color: #f1f5f9;
-}
-.card {
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-}
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-}
-/* KPI Issue Indicator */
-.kpi-issue-indicator {
-    display: inline-flex;
-    align-items: center;
-    background-color: #fee2e2;
-    border: 1px solid #fecaca;
-    border-radius: 6px;
-    padding: 2px 8px;
-    margin-left: 8px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #b91c1c;
-}
-/* Custom styles for pending TFORs */
-.pending-tfor-card {
-    background-color: #fffbeb;
-    border-left: 4px solid #f59e0b;
-}
-.waiting-receive-card {
-    background-color: #f0f9ff;
-    border-left: 4px solid #0ea5e9;
-}
-/* LOG Table Styles */
-.log-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-.log-table th, .log-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: left;
-}
-.log-table th {
-    background-color: #f2f2f2;
-}
-.log-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-.log-table tr:hover {
-    background-color: #f1f5f9;
-}
-/* ปุ่มวางแผนงาน */
-.plan-work-btn {
-    background-color: #8b5cf6;
-    color: white;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-.plan-work-btn:hover {
-    background-color: #7c3aed;
-    transform: translateY(-1px);
-}
-/* ปฏิทินสำหรับเลือกวันที่วางแผน */
-.calendar-picker {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    z-index: 50;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    padding: 16px;
-    width: 320px;
-    display: none;
-}
-.calendar-picker.active {
-    display: block;
-}
-.calendar-picker-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-.calendar-picker-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-}
-.calendar-picker-day {
-    aspect-ratio: 1;
+    background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.calendar-picker-day:hover {
-    background-color: #f3f4f6;
-}
-.calendar-picker-day.selected {
-    background-color: #8b5cf6;
-    color: white;
-}
-.calendar-picker-day.other-month {
-    color: #d1d5db;
-}
-.calendar-picker-day.today {
-    font-weight: bold;
-    color: #8b5cf6;
-}
-/* Calendar Tooltip Styles */
-.calendar-day {
-    position: relative;
-}
-.calendar-tooltip {
-    position: absolute;
-    z-index: 10;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 10px;
-    max-width: 250px;
-    font-size: 14px;
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
-    top: 100%; /* Position below the day cell */
-    left: 50%;
-    transform: translateX(-50%);
-    margin-top: 5px;
-}
-.calendar-day:hover .calendar-tooltip {
-    opacity: 1;
-    pointer-events: auto;
-}
-.calendar-tooltip::before {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 0 8px 8px 8px;
-    border-style: solid;
-    border-color: transparent transparent white transparent;
-}
-/* Custom Scrollbar for Comments */
-#comments-display::-webkit-scrollbar {
-    width: 8px;
-}
-#comments-display::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-}
-#comments-display::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 10px;
-}
-#comments-display::-webkit-scrollbar-thumb:hover {
-    background: #aaa;
+    z-index: 1000;
 }
 
-/* สไตล์สำหรับหน้ารอรับสินค้า */
-.product-card {
-    border-left: 4px solid #3b82f6;
-    transition: all 0.3s ease;
-    cursor: pointer;
+.employee-selection-modal .modal-content,
+.issue-employee-selection-modal .modal-content {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 24px;
 }
-.product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
-}
-.action-btn {
-    transition: all 0.2s ease;
-}
-.action-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-/* สไตล์สำหรับ empty state */
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem 1rem;
-    text-align: center;
-}
-.empty-state-icon {
-    color: #d1d5db;
-    margin-bottom: 1rem;
-}
-.empty-state-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #4b5563;
-    margin-bottom: 0.5rem;
-}
-.empty-state-description {
-    color: #6b7280;
-    max-width-md;
-}
-/* ปรับปรุงหัวข้อหน้า */
-.page-header {
-    margin-bottom: 2rem;
-}
-.page-header-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    border-radius: 9999px;
-    margin-bottom: 1rem;
-}
-/* ปรับปรุง progress bar */
-.progress-bar {
-    height: 0.5rem;
-    background-color: #e5e7eb;
-    border-radius: 9999px;
-    overflow: hidden;
-}
-.progress-bar-fill {
-    height: 100%;
-    background-color: #3b82f6;
-    border-radius: 9999px;
-    transition: width 0.3s ease;
-}
-/* ปรับปรุง badge */
-.badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-.badge-warning {
-    background-color: #fef3c7;
-    color: #92400e;
-}
-/* ปรับปรุง card details */
-.card-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.card-detail-item {
-    display: flex;
-    align-items: center;
-    font-size: 0.875rem;
-    color: #4b5563;
-}
-.card-detail-icon {
-    margin-right: 0.5rem;
-    flex-shrink: 0;
-}
-/* ปรับปรุง card footer */
-.card-footer {
+
+.employee-selection-modal .modal-header,
+.issue-employee-selection-modal .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #e5e7eb;
+    margin-bottom: 20px;
 }
-.card-status {
+
+.employee-selection-modal .modal-title,
+.issue-employee-selection-modal .modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.employee-selection-modal .close-button,
+.issue-employee-selection-modal .close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.employee-selection-modal .employee-list,
+.issue-employee-selection-modal .employee-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.employee-selection-modal .employee-item,
+.issue-employee-selection-modal .employee-item {
     display: flex;
     align-items: center;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: background-color 0.2s;
+}
+
+.employee-selection-modal .employee-item:hover,
+.issue-employee-selection-modal .employee-item:hover {
+    background-color: #f3f4f6;
+}
+
+.employee-selection-modal .employee-checkbox,
+.issue-employee-selection-modal .employee-checkbox {
+    margin-right: 12px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.employee-selection-modal .employee-info,
+.issue-employee-selection-modal .employee-info {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    cursor: pointer;
+}
+
+.employee-selection-modal .employee-avatar,
+.issue-employee-selection-modal .employee-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+}
+
+.employee-selection-modal .employee-name,
+.issue-employee-selection-modal .employee-name {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.employee-selection-modal .employee-role,
+.issue-employee-selection-modal .employee-role {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.employee-selection-modal .modal-footer,
+.issue-employee-selection-modal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.employee-selection-modal .btn,
+.issue-employee-selection-modal .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.employee-selection-modal .btn-cancel,
+.issue-employee-selection-modal .btn-cancel {
+    background-color: #e5e7eb;
+    color: #4b5563;
+}
+
+.employee-selection-modal .btn-cancel:hover,
+.issue-employee-selection-modal .btn-cancel:hover {
+    background-color: #d1d5db;
+}
+
+.employee-selection-modal .btn-confirm,
+.issue-employee-selection-modal .btn-confirm {
+    background-color: #8b5cf6;
+    color: white;
+}
+
+.employee-selection-modal .btn-confirm:hover,
+.issue-employee-selection-modal .btn-confirm:hover {
+    background-color: #7c3aed;
+}
+
+/* สไตล์สำหรับระบบคะแนนดาว */
+.star-points-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 16px 0;
+}
+
+.star-points-counter {
+    display: flex;
+    align-items: center;
+    margin: 0 16px;
+    padding: 8px 16px;
+    background-color: #f3f4f6;
+    border-radius: 8px;
+}
+
+.star-points-counter .star-icon {
+    margin-right: 8px;
+}
+
+.star-points-counter .small-star {
+    color: #fbbf24;
+    font-size: 1.2rem;
+}
+
+.star-points-counter .big-star {
+    color: #f59e0b;
+    font-size: 1.5rem;
+}
+
+.star-points-counter .star-count {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.star-progress-container {
+    width: 100%;
+    height: 12px;
+    background-color: #e5e7eb;
+    border-radius: 6px;
+    margin: 16px 0;
+    overflow: hidden;
+}
+
+.star-progress-bar {
+    height: 100%;
+    background-color: #fbbf24;
+    border-radius: 6px;
+    transition: width 0.3s ease;
+}
+
+.star-achievements {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.achievement-badge {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background-color: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 20px;
+    margin: 4px;
+}
+
+.achievement-badge .big-star {
+    margin-right: 6px;
+    color: #f59e0b;
+}
+
+.achievement-badge .badge-text {
+    font-weight: 600;
+    color: #92400e;
     font-size: 0.875rem;
 }
-.status-checked {
-    color: #10b981;
-    font-weight: 500;
+
+/* สไตล์สำหรับปุ่มดาว */
+.star-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
 }
-.status-received {
-    color: #8b5cf6;
-    font-weight: 500;
+
+.add-star-button {
+    background-color: #fbbf24;
+    color: #78350f;
 }
-.status-separator {
-    margin: 0 0.5rem;
+
+.add-star-button:hover {
+    background-color: #f59e0b;
+}
+
+.deduct-star-button {
+    background-color: #f87171;
+    color: #7f1d1d;
+}
+
+.deduct-star-button:hover {
+    background-color: #ef4444;
+}
+
+/* สไตล์สำหรับการแสดงคะแนนดาวในโปรไฟล์ */
+.profile-star-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 16px 0;
+}
+
+.profile-star-counter {
+    display: flex;
+    align-items: center;
+    margin: 0 12px;
+    padding: 8px 16px;
+    background-color: #f3f4f6;
+    border-radius: 8px;
+}
+
+.profile-star-counter .star-icon {
+    margin-right: 8px;
+}
+
+.profile-star-counter .small-star {
+    color: #fbbf24;
+    font-size: 1.2rem;
+}
+
+.profile-star-counter .big-star {
+    color: #f59e0b;
+    font-size: 1.5rem;
+}
+
+.profile-star-counter .star-count {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* สไตล์สำหรับระบบแจ้งเตือน */
+.notification-panel {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 8px;
+    width: 320px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 50;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notification-panel .notification-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.notification-panel .notification-list {
+    padding: 8px;
+}
+
+.notification-panel .notification-item {
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background-color: #f9fafb;
+    border-left: 4px solid #8b5cf6;
+}
+
+.notification-panel .notification-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.notification-panel .notification-message {
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.notification-panel .notification-time {
+    font-size: 0.75rem;
     color: #9ca3af;
+    margin-top: 4px;
+    text-align: right;
+}
+
+.notification-bell {
+    position: relative;
+}
+
+.notification-count {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    background-color: #ef4444;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* สไตล์สำหรับ modal คะแนนดาว */
+#star-points-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+#star-points-modal .modal-content {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+#star-points-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#star-points-modal .modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+#star-points-modal .close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+#star-points-modal .star-display {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+#star-points-modal .star-counter {
+    display: flex;
+    align-items: center;
+    margin: 0 12px;
+    padding: 12px 16px;
+    background-color: #f3f4f6;
+    border-radius: 8px;
+}
+
+#star-points-modal .star-counter .small-star {
+    color: #fbbf24;
+    font-size: 1.2rem;
+    margin-right: 8px;
+}
+
+#star-points-modal .star-counter .big-star {
+    color: #f59e0b;
+    font-size: 1.5rem;
+    margin-right: 8px;
+}
+
+#star-points-modal .star-counter .star-count {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+#star-points-modal .star-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+#star-points-modal .star-button {
+    flex: 1;
+    margin: 0 8px;
+}
+
+#star-points-modal .add-star-button {
+    background-color: #fbbf24;
+    color: #78350f;
+}
+
+#star-points-modal .deduct-star-button {
+    background-color: #f87171;
+    color: #7f1d1d;
+}
+
+#star-points-modal .form-group {
+    margin-bottom: 16px;
+}
+
+#star-points-modal .form-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: #374151;
+}
+
+#star-points-modal .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+#star-points-modal .form-control:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+#star-points-modal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+#star-points-modal .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#star-points-modal .btn-cancel {
+    background-color: #e5e7eb;
+    color: #4b5563;
+}
+
+#star-points-modal .btn-cancel:hover {
+    background-color: #d1d5db;
+}
+
+#star-points-modal .btn-save {
+    background-color: #8b5cf6;
+    color: white;
+}
+
+#star-points-modal .btn-save:hover {
+    background-color: #7c3aed;
 }
