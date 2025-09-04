@@ -2833,6 +2833,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderKpiView() {
         const summaryContainer = document.getElementById('kpi-summary-container');
         const detailsContainer = document.getElementById('kpi-details-container');
+        const userStatusDiv = document.getElementById('kpi-user-status');
+        const adminControlsDiv = document.getElementById('kpi-admin-controls');
+        const summarySection = document.getElementById('kpi-summary-section');
+        
         summaryContainer.innerHTML = '';
         detailsContainer.classList.add('hidden');
         const allIssues = Object.values(issuesData).flat();
@@ -2842,16 +2846,69 @@ document.addEventListener('DOMContentLoaded', () => {
         const isSupervisor = currentUserProfile.role === 'Supervisor';
         const canViewAllKpi = isAdmin || isSupervisor;
         
-        // ตั้งค่า header ตามตำแหน่งผู้ใช้
-        const header = document.querySelector('#kpi-view header h1');
-        if (header) {
-            if (isAdmin || isSupervisor) {
-                header.textContent = 'KPI พนักงานทั้งหมด';
+        // แสดง/ซ่อนส่วนต่างๆ ตามตำแหน่ง
+        if (userStatusDiv) {
+            userStatusDiv.classList.remove('hidden');
+            if (canViewAllKpi) {
+                document.getElementById('kpi-view-type').textContent = 'ของพนักงานทั้งหมด';
             } else {
-                header.textContent = 'KPI ของฉัน';
+                document.getElementById('kpi-view-type').textContent = 'ของคุณเอง';
             }
         }
         
+        if (adminControlsDiv) {
+            if (canViewAllKpi) {
+                adminControlsDiv.classList.remove('hidden');
+            } else {
+                adminControlsDiv.classList.add('hidden');
+            }
+        }
+        
+        if (summarySection) {
+            if (canViewAllKpi) {
+                summarySection.classList.remove('hidden');
+                // อัปเดตข้อมูลสรุป
+                document.getElementById('total-employees').textContent = allUsers.filter(u => u.role !== 'Admin').length;
+                
+                const allScores = allUsers.map(user => {
+                    const createdCount = [...allTransfersData, ...completedTransfersData].filter(t => t.createdByUid === user.id).length;
+                    const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === user.id).length;
+                    const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
+                    const reportedIssuesCount = allIssues.filter(i => i.reportedByUid === user.id).length;
+                    const foundIssuesCount = allIssues.filter(i => i.checkerUid === user.id).length;
+                    const userScores = allScores.filter(s => s.userId === user.id);
+                    const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
+                    
+                    return checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
+                });
+                
+                const averageScore = allScores.reduce((sum, score) => sum + score, 0) / allScores.length;
+                document.getElementById('average-score').textContent = averageScore.toFixed(1);
+                
+                const topPerformers = allScores.filter(score => score > averageScore).length;
+                document.getElementById('top-performers').textContent = topPerformers;
+            } else {
+                summarySection.classList.add('hidden');
+            }
+        }
+        
+        // เพิ่ม Event Listeners สำหรับปุ่มควบคุม
+        const refreshBtn = document.getElementById('refresh-kpi-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                renderKpiView();
+                showNotification('รีเฟรชข้อมูลสำเร็จ');
+            });
+        }
+        
+        const exportBtn = document.getElementById('export-kpi-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                exportKpiData();
+            });
+        }
+        
+        // ส่วนที่เหลือของฟังก์ชันเดิม...
         // ถ้าเป็น Admin หรือ Supervisor ให้แสดง KPI ของทุกคน
         if (canViewAllKpi) {
             allUsers.forEach(user => {
@@ -2967,6 +3024,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 showStarPointsModal(e.target.dataset.userId);
             });
         });
+    }
+    
+    function exportKpiData() {
+        const button = document.getElementById('export-kpi-btn');
+        button.disabled = true;
+        button.innerHTML = `<div class="loading-spinner w-4 h-4 border-white border-t-transparent rounded-full inline-block mr-2"></div> กำลังสร้าง...`;
+        
+        try {
+            const kpiData = allUsers
+                .filter(user => user.role !== 'Admin')
+                .map(user => {
+                    const createdCount = [...allTransfersData, ...completedTransfersData].filter(t => t.createdByUid === user.id).length;
+                    const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === user.id).length;
+                    const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
+                    const reportedIssuesCount = Object.values(issuesData).flat().filter(i => i.reportedByUid === user.id).length;
+                    const foundIssuesCount = Object.values(issuesData).flat().filter(i => i.checkerUid === user.id).length;
+                    const userScores = allScores.filter(s => s.userId === user.id);
+                    const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
+                    
+                    const kpiScore = checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
+                    
+                    return {
+                        'ชื่อ-นามสกุล': `${user.firstName} ${user.lastName}`,
+                        'ตำแหน่ง': user.role || 'Officer',
+                        'สร้าง TFOR': createdCount,
+                        'เช็คสินค้า': checkedCount,
+                        'รับสินค้า': receivedCount,
+                        'พบปัญหา': foundIssuesCount,
+                        'รายงานปัญหา': reportedIssuesCount,
+                        'คะแนนพิเศษ': totalStars,
+                        'คะแนนรวม': kpiScore
+                    };
+                });
+            
+            // สร้าง CSV
+            const headers = Object.keys(kpiData[0]);
+            const csvContent = [
+                headers.join(','),
+                ...kpiData.map(row => headers.map(header => `"${row[header]}"`).join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `kpi_data_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            
+            showNotification('ส่งออกข้อมูล KPI สำเร็จ');
+        } catch (error) {
+            console.error('Error exporting KPI data:', error);
+            showNotification('เกิดข้อผิดพลาดในการส่งออกข้อมูล', false);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = `
+                <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export
+            `;
+        }
     }
     
     function renderUserManagement() {
