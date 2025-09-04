@@ -204,68 +204,34 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateUIForRoles() {
         if (!currentUserProfile) return;
         const role = currentUserProfile.role || 'Officer';
-        
-        // กำหนดสิทธิ์สำหรับแต่ละตำแหน่ง
         const roles = {
-            'Admin': [
-                'admin-only', 
-                'admin-supervisor-only', 
-                'senior-and-up', 
-                'delete-permission', 
-                'canViewKpi', 
-                'canManageUsers', 
-                'canManageSystem', 
-                'canPlanWork', 
-                'canComment'
-            ],
-            'Supervisor': [
-                'admin-supervisor-only', 
-                'senior-and-up', 
-                'delete-permission', 
-                'canViewKpi', 
-                'canManageUsers', 
-                'canPlanWork', 
-                'canComment'
-            ],
-            'Senior': [
-                'senior-and-up', 
-                'canViewKpi', // เพิ่มสิทธิ์การเห็นปุ่ม KPI
-                'canPlanWork', 
-                'canComment'
-            ],
-            'Officer': [
-                'canViewKpi', // เพิ่มสิทธิ์การเห็นปุ่ม KPI
-                'canComment'
-            ],
-            'Viewer': [
-                'canViewKpi' // เพิ่มสิทธิ์การเห็นปุ่ม KPI
-            ]
+            'Admin': ['admin-only', 'admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canManageSystem', 'canPlanWork', 'canComment'],
+            'Supervisor': ['admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canPlanWork', 'canComment'],
+            'Senior': ['senior-and-up', 'canViewKpi', 'canPlanWork', 'canComment'],
+            'Officer': ['canComment'],
+            'Viewer': []
         };
         
-        // ซ่อนทุก element ที่มี data-permission ก่อน
+        // Hide all role-based elements first
         document.querySelectorAll('[data-permission]').forEach(el => el.style.display = 'none');
         
-        // แสดง elements ตามสิทธิ์ของผู้ใช้ปัจจุบัน
+        // Show elements based on the current user's role
         if (roles[role]) {
             roles[role].forEach(permission => {
                 document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
-                    el.style.display = ''; // แสดง element
+                    el.style.display = 'block'; // Or 'inline-block', 'flex' etc. as needed
                 });
             });
         }
         
-        // จัดการสิทธิ์การลบข้อมูลเฉพาะ Admin และ Supervisor
+        // Handle delete permissions specifically for senior and viewer roles
         if (role === 'Senior' || role === 'Viewer') {
-            document.querySelectorAll('.delete-permission').forEach(el => {
-                el.style.display = 'none';
-            });
+            document.querySelectorAll('.delete-permission').forEach(el => el.style.display = 'none');
         }
         
-        // สำหรับ Viewer ให้ซ่อนปุ่มแก้ไขทั้งหมด
+        // For Viewer role, hide all edit buttons
         if (role === 'Viewer') {
-            document.querySelectorAll('.edit-button').forEach(el => {
-                el.style.display = 'none';
-            });
+            document.querySelectorAll('.edit-button').forEach(el => el.style.display = 'none');
         }
     }
     
@@ -487,16 +453,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updateMainMenuSummary() {
         const todayString = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-        
-        // แก้ไข: ให้นับเฉพาะ TFOR ที่มีวันที่เข้ามาจริงในวันนี้ (deliveryDate)
-        const todaysPlanCount = allTransfersData.filter(t => {
-            return t.deliveryDate === todayString;
-        }).length;
-        
         const pendingCount = allTransfersData.filter(t => !t.scheduledDate).length;
+        const todaysPlanCount = allTransfersData.filter(t => t.scheduledDate === todayString).length;
         const completedTodayCount = completedTransfersData.filter(t => t.completionDate === todayString).length;
         
-        // แก้ไข: แสดงรายการมีปัญหาเฉพาะภายในวันนั้นๆ
+        // แสดงรายการมีปัญหาเฉพาะภายในวันนั้นๆ
         const todayIssues = Object.values(issuesData)
             .flat()
             .filter(issue => issue.reportDate === todayString);
@@ -694,11 +655,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         tforBlock.querySelector('.remove-tfor-button').addEventListener('click', () => tforBlock.remove());
+
         // Listeners for Linked TFORs
         const addBtn = tforBlock.querySelector('.add-linked-tfor-btn');
         const input = tforBlock.querySelector('.linked-tfor-input');
         const list = tforBlock.querySelector('.linked-tfor-list');
         const year = new Date().getFullYear().toString().substr(-2);
+
         addBtn.addEventListener('click', () => {
             const tforValue = input.value.trim();
             if (tforValue && /^\d{4}$/.test(tforValue)) {
@@ -762,6 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const palletNotes = block.querySelector('.pallet-notes').value;
                 const linkedTforElements = block.querySelectorAll('.linked-tfor-list span');
                 const linkedTfors = Array.from(linkedTforElements).map(span => span.textContent);
+
                 const tforData = {
                     deliveryDate, licensePlate,
                     images: uploadedImagesBase64,
@@ -1415,6 +1379,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="linked-tfor-display" class="mt-4"></div>
             <div class="mt-4"><p class="text-sm font-semibold text-gray-500 mb-2">รูปภาพรวม</p>${imagesHTML}</div>
         `;
+
         const linkedTforContainer = document.getElementById('linked-tfor-display');
         if (currentTforData.linkedTfors && currentTforData.linkedTfors.length > 0) {
             linkedTforContainer.innerHTML = `
@@ -2150,157 +2115,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
         const todayString = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
         
-        // ดึง TFOR ที่เข้ามาจริงในวันนี้ (deliveryDate)
-        const todaysNewTransfers = allTransfersData.filter(t => t.deliveryDate === todayString);
+        // Get all transfers (both pending and completed)
+        const allTransfers = [...allTransfersData, ...completedTransfersData];
         
-        // ดึงเฉพาะ TFOR ที่วางแผนไว้สำหรับวันนี้ (scheduledDate) แต่ไม่ใช่ TFOR ที่เข้ามาใหม่ในวันเดียวกัน
-        const scheduledForToday = allTransfersData.filter(t => t.scheduledDate === todayString && t.deliveryDate !== todayString);
+        // Filter transfers scheduled for today
+        const todaysTransfers = allTransfers.filter(t => t.scheduledDate === todayString);
         
-        // ===== ส่วนที่ 1: แสดง TFOR ที่เข้ามาใหม่ในวันนี้ =====
-        container.innerHTML = `
-            <div class="mb-8">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800">TFOR ที่เข้ามาใหม่วันนี้</h2>
-                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                        ${todaysNewTransfers.length} รายการ
-                    </span>
-                </div>
-                <p class="text-gray-600 mb-6">รายการ TFOR ที่บันทึกเข้ามาในวันที่ ${todayString}</p>
-        `;
-        
-        if (todaysNewTransfers.length === 0) {
-            container.innerHTML += `
-                <div class="bg-white rounded-2xl shadow-lg p-8 text-center mb-8">
-                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    <h3 class="text-xl font-bold text-gray-700 mb-2">ไม่มี TFOR ใหม่สำหรับวันนี้</h3>
-                    <p class="text-gray-500">วันนี้ยังไม่มีการบันทึก TFOR ใหม่</p>
-                    <button class="mt-4 px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 plan-work-permission">
-                        บันทึก TFOR ใหม่
-                    </button>
-                </div>
-            `;
-            
-            // เพิ่ม event listener สำหรับปุ่มบันทึก TFOR ใหม่
-            const planButton = container.querySelector('.plan-work-permission');
-            if (planButton) {
-                planButton.addEventListener('click', () => {
-                    showMainView(views.transfers);
-                    initializeForm();
-                    showSubView(formView);
-                });
-            }
-        } else {
-            // สร้างการ์ดสำหรับแสดง TFOR ที่เข้ามาใหม่
-            const newTransfersContainer = document.createElement('div');
-            newTransfersContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 mb-8';
-            
-            todaysNewTransfers.forEach(transfer => {
-                const card = document.createElement('div');
-                card.className = 'bg-white p-6 rounded-2xl shadow-md border-l-4 border-blue-500 cursor-pointer hover:shadow-lg transition-shadow';
-                
-                // แสดงสถานะของ TFOR
-                let statusText = 'ยังไม่ได้วางแผน';
-                let statusColor = 'bg-gray-100 text-gray-800';
-                
-                if (transfer.scheduledDate) {
-                    statusText = 'วางแผนแล้ว';
-                    statusColor = 'bg-purple-100 text-purple-800';
-                }
-                
-                if (transfer.isCompleted) {
-                    statusText = 'เช็คเสร็จแล้ว';
-                    statusColor = 'bg-green-100 text-green-800';
-                }
-                
-                // แสดง TFOR พ่วง
-                const linkedTforsHtml = transfer.linkedTfors && transfer.linkedTfors.length > 0 
-                    ? `<div class="mt-2"><span class="text-sm font-medium">TFOR พ่วง:</span> ${transfer.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')}</div>`
-                    : '';
-                
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <span class="text-xs px-2 py-1 rounded-full ${statusColor}">${statusText}</span>
-                            <h3 class="text-xl font-bold mt-2">...${transfer.tforNumber}</h3>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-sm text-gray-500">พาเลท</p>
-                            <p class="text-xl font-bold">${transfer.palletCount}</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div>
-                            <p class="text-sm text-gray-500">ทะเบียนรถ</p>
-                            <p class="font-medium">${transfer.licensePlate}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">สาขาต้นทาง</p>
-                            <p class="font-medium">${transfer.branch}</p>
-                        </div>
-                    </div>
-                    ${linkedTforsHtml}
-                    <div class="mt-4 text-right">
-                        <button class="text-sm text-blue-600 hover:text-blue-800 font-medium plan-work-permission" data-id="${transfer.id}">
-                            วางแผนงาน →
-                        </button>
-                    </div>
-                `;
-                
-                // เพิ่ม event listener สำหรับการคลิกที่การ์ด
-                card.addEventListener('click', (e) => {
-                    // ถ้าคลิกที่ปุ่มวางแผนงาน ไม่ต้องทำอะไร (จะถูกจัดการโดยปุ่มนั้นโดยตรง)
-                    if (e.target.classList.contains('plan-work-permission')) return;
-                    
-                    currentTforData = transfer;
-                    showMainView(views.transfers);
-                    renderCheckView();
-                    showSubView(checkView);
-                });
-                
-                // เพิ่ม event listener สำหรับปุ่มวางแผนงาน
-                const planButton = card.querySelector('.plan-work-permission');
-                if (planButton) {
-                    planButton.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        showSchedulingModalForTransfer(transfer);
-                    });
-                }
-                
-                newTransfersContainer.appendChild(card);
-            });
-            
-            container.appendChild(newTransfersContainer);
-        }
-        
-        // ===== ส่วนที่ 2: แสดงงานที่วางแผนไว้สำหรับวันนี้ =====
-        container.innerHTML += `
-            <div class="mt-8">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800">งานที่วางแผนไว้สำหรับวันนี้</h2>
-                    <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
-                        ${scheduledForToday.length} รายการ
-                    </span>
-                </div>
-                <p class="text-gray-600 mb-6">รายการ TFOR ที่วางแผนไว้สำหรับดำเนินการในวันที่ ${todayString}</p>
-        `;
-        
-        if (scheduledForToday.length === 0) {
-            container.innerHTML += `
+        if (todaysTransfers.length === 0) {
+            container.innerHTML = `
                 <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
                     <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
-                    <h3 class="text-xl font-bold text-gray-700 mb-2">ไม่มีงานที่วางแผนไว้สำหรับวันนี้</h3>
-                    <p class="text-gray-500">ยังไม่มีการวางแผนงานสำหรับวันนี้</p>
+                    <h3 class="text-xl font-bold text-gray-700 mb-2">ไม่มีงานวางแผนสำหรับวันนี้</h3>
+                    <p class="text-gray-500">คุณสามารถวางแผนงานได้ที่หน้าปฏิทิน</p>
                     <button class="mt-4 px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 plan-work-permission">
                         วางแผนงานสำหรับวันนี้
                     </button>
                 </div>
             `;
             
-            // เพิ่ม event listener สำหรับปุ่มวางแผนงาน
+            // Add event listener to the planning button
             const planButton = container.querySelector('.plan-work-permission');
             if (planButton) {
                 planButton.addEventListener('click', () => {
@@ -2312,55 +2147,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 300);
                 });
             }
-        } else {
-            // สร้างการ์ดสำหรับแสดงงานที่วางแผนไว้
-            const scheduledContainer = document.createElement('div');
-            scheduledContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
             
-            scheduledForToday.forEach(transfer => {
+            return;
+        }
+        
+        // Group transfers by status
+        const pendingTransfers = todaysTransfers.filter(t => !t.isCompleted);
+        const completedTransfers = todaysTransfers.filter(t => t.isCompleted);
+        
+        // Render pending transfers
+        if (pendingTransfers.length > 0) {
+            const pendingSection = document.createElement('div');
+            pendingSection.className = 'mb-8';
+            pendingSection.innerHTML = `
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+                    งานที่รอดำเนินการ (${pendingTransfers.length})
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            `;
+            
+            const pendingContainer = pendingSection.querySelector('.grid');
+            pendingTransfers.forEach(transfer => {
                 const card = document.createElement('div');
-                card.className = 'bg-white p-6 rounded-2xl shadow-md border-l-4 border-purple-500 cursor-pointer hover:shadow-lg transition-shadow';
-                
-                // แสดงสถานะของ TFOR
-                let statusText = 'วางแผนแล้ว';
-                let statusColor = 'bg-purple-100 text-purple-800';
-                
-                if (transfer.isCompleted) {
-                    statusText = 'เช็คเสร็จแล้ว';
-                    statusColor = 'bg-green-100 text-green-800';
-                }
-                
+                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-yellow-500 cursor-pointer hover:shadow-lg transition-shadow';
                 card.innerHTML = `
-                    <div class="flex justify-between items-start mb-4">
+                    <div class="flex justify-between items-start">
                         <div>
-                            <span class="text-xs px-2 py-1 rounded-full ${statusColor}">${statusText}</span>
-                            <h3 class="text-xl font-bold mt-2">...${transfer.tforNumber}</h3>
+                            <p class="font-bold text-lg">...${transfer.tforNumber}</p>
+                            <p class="text-sm text-gray-600">${transfer.branch}</p>
+                            <p class="text-sm text-gray-500">${transfer.licensePlate}</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-sm text-gray-500">พาเลท</p>
-                            <p class="text-xl font-bold">${transfer.palletCount}</p>
+                            <p class="text-xs text-gray-500">พาเลท</p>
+                            <p class="font-bold">${transfer.palletCount}</p>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div>
-                            <p class="text-sm text-gray-500">ทะเบียนรถ</p>
-                            <p class="font-medium">${transfer.licensePlate}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">สาขาต้นทาง</p>
-                            <p class="font-medium">${transfer.branch}</p>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <p class="text-sm text-gray-500">วันที่เข้ามาจริง</p>
-                        <p class="font-medium">${transfer.deliveryDate || 'ยังไม่ได้เข้ามา'}</p>
-                    </div>
-                    <div class="mb-4">
-                        <p class="text-sm text-gray-500">วางแผนโดย</p>
-                        <p class="font-medium">${transfer.scheduledByName || 'N/A'}</p>
-                    </div>
-                    <div class="mt-4 flex justify-between items-center">
-                        <span class="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full">
+                    <div class="mt-3 flex justify-between items-center">
+                        <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
                             โดย ${transfer.scheduledByName || 'N/A'}
                         </span>
                         <button class="text-xs text-red-500 hover:text-red-700 plan-work-permission" data-id="${transfer.id}">
@@ -2369,7 +2193,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
                 
-                // Add event listeners
+                // Add click event to navigate to check view
                 card.addEventListener('click', (e) => {
                     if (!e.target.classList.contains('plan-work-permission')) {
                         currentTforData = transfer;
@@ -2379,28 +2203,74 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 
-                const cancelButton = card.querySelector('.plan-work-permission');
-                cancelButton.addEventListener('click', async (e) => {
+                // Add event to cancel plan
+                card.querySelector('.plan-work-permission').addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    showConfirmationModal('คุณแน่ใจหรือไม่ว่าต้องการยกเลิกแผนงานนี้?', async () => {
-                        try {
-                            await updateDoc(doc(db, "transfers", transfer.id), { 
-                                scheduledDate: null, 
-                                scheduledByUid: null, 
-                                scheduledByName: null 
-                            });
-                            showNotification('ยกเลิกแผนงานสำเร็จ');
-                            renderTodaysPlanView(); // Refresh the view
-                        } catch (error) {
-                            showNotification('เกิดข้อผิดพลาดในการยกเลิก', false);
-                        }
-                    });
+                    try {
+                        await updateDoc(doc(db, "transfers", transfer.id), { 
+                            scheduledDate: null, 
+                            scheduledByUid: null, 
+                            scheduledByName: null 
+                        });
+                        showNotification('ยกเลิกแผนงานสำเร็จ');
+                        renderTodaysPlanView(); // Refresh the view
+                    } catch (error) {
+                        showNotification('เกิดข้อผิดพลาดในการยกเลิก', false);
+                    }
                 });
                 
-                scheduledContainer.appendChild(card);
+                pendingContainer.appendChild(card);
             });
             
-            container.appendChild(scheduledContainer);
+            container.appendChild(pendingSection);
+        }
+        
+        // Render completed transfers
+        if (completedTransfers.length > 0) {
+            const completedSection = document.createElement('div');
+            completedSection.innerHTML = `
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    งานที่เสร็จสิ้น (${completedTransfers.length})
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            `;
+            
+            const completedContainer = completedSection.querySelector('.grid');
+            completedTransfers.forEach(transfer => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-lg">...${transfer.tforNumber}</p>
+                            <p class="text-sm text-gray-600">${transfer.branch}</p>
+                            <p class="text-sm text-gray-500">${transfer.licensePlate}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-500">พาเลท</p>
+                            <p class="font-bold">${transfer.palletCount}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                            เสร็จสิ้น ${transfer.completionDate || 'N/A'}
+                        </span>
+                    </div>
+                `;
+                
+                // Add click event to navigate to check view
+                card.addEventListener('click', () => {
+                    currentTforData = transfer;
+                    showMainView(views.transfers);
+                    renderCheckView();
+                    showSubView(checkView);
+                });
+                
+                completedContainer.appendChild(card);
+            });
+            
+            container.appendChild(completedSection);
         }
         
         // Update UI for roles
@@ -2833,140 +2703,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderKpiView() {
         const summaryContainer = document.getElementById('kpi-summary-container');
         const detailsContainer = document.getElementById('kpi-details-container');
-        const userStatusDiv = document.getElementById('kpi-user-status');
-        const adminControlsDiv = document.getElementById('kpi-admin-controls');
-        const summarySection = document.getElementById('kpi-summary-section');
-        
         summaryContainer.innerHTML = '';
         detailsContainer.classList.add('hidden');
         const allIssues = Object.values(issuesData).flat();
         
-        // ตรวจสอบตำแหน่งของผู้ใช้ปัจจุบัน
-        const isAdmin = currentUserProfile.role === 'Admin';
-        const isSupervisor = currentUserProfile.role === 'Supervisor';
-        const canViewAllKpi = isAdmin || isSupervisor;
-        
-        // แสดง/ซ่อนส่วนต่างๆ ตามตำแหน่ง
-        if (userStatusDiv) {
-            userStatusDiv.classList.remove('hidden');
-            if (canViewAllKpi) {
-                document.getElementById('kpi-view-type').textContent = 'ของพนักงานทั้งหมด';
-            } else {
-                document.getElementById('kpi-view-type').textContent = 'ของคุณเอง';
-            }
-        }
-        
-        if (adminControlsDiv) {
-            if (canViewAllKpi) {
-                adminControlsDiv.classList.remove('hidden');
-            } else {
-                adminControlsDiv.classList.add('hidden');
-            }
-        }
-        
-        if (summarySection) {
-            if (canViewAllKpi) {
-                summarySection.classList.remove('hidden');
-                // อัปเดตข้อมูลสรุป
-                document.getElementById('total-employees').textContent = allUsers.filter(u => u.role !== 'Admin').length;
-                
-                const allScores = allUsers.map(user => {
-                    const createdCount = [...allTransfersData, ...completedTransfersData].filter(t => t.createdByUid === user.id).length;
-                    const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === user.id).length;
-                    const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
-                    const reportedIssuesCount = allIssues.filter(i => i.reportedByUid === user.id).length;
-                    const foundIssuesCount = allIssues.filter(i => i.checkerUid === user.id).length;
-                    const userScores = allScores.filter(s => s.userId === user.id);
-                    const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
-                    
-                    return checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
-                });
-                
-                const averageScore = allScores.reduce((sum, score) => sum + score, 0) / allScores.length;
-                document.getElementById('average-score').textContent = averageScore.toFixed(1);
-                
-                const topPerformers = allScores.filter(score => score > averageScore).length;
-                document.getElementById('top-performers').textContent = topPerformers;
-            } else {
-                summarySection.classList.add('hidden');
-            }
-        }
-        
-        // เพิ่ม Event Listeners สำหรับปุ่มควบคุม
-        const refreshBtn = document.getElementById('refresh-kpi-btn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
-                renderKpiView();
-                showNotification('รีเฟรชข้อมูลสำเร็จ');
-            });
-        }
-        
-        const exportBtn = document.getElementById('export-kpi-btn');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => {
-                exportKpiData();
-            });
-        }
-        
-        // ส่วนที่เหลือของฟังก์ชันเดิม...
-        // ถ้าเป็น Admin หรือ Supervisor ให้แสดง KPI ของทุกคน
-        if (canViewAllKpi) {
-            allUsers.forEach(user => {
-                if (user.role === 'Admin') return; // Don't show admin in KPI list
-                const createdCount = [...allTransfersData, ...completedTransfersData].filter(t => t.createdByUid === user.id).length;
-                const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === user.id).length;
-                const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
-                
-                // Count issues reported by this user
-                const reportedIssuesCount = allIssues.filter(i => i.reportedByUid === user.id).length;
-                
-                // Count issues found by this user (where they were the checker)
-                const foundIssuesCount = allIssues.filter(i => i.checkerUid === user.id).length;
-                
-                const userScores = allScores.filter(s => s.userId === user.id);
-                const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
-                const profilePic = user.profilePictureUrl || 'https://placehold.co/80x80/e0e0e0/757575?text=?';
-                
-                // KPI Calculation: Checked + Created + Found Issues + Reported Issues + Received + Stars
-                const kpiScore = checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
-                const scoreColor = kpiScore > 10 ? 'text-green-500' : kpiScore > 0 ? 'text-blue-500' : 'text-red-500';
-                const card = document.createElement('div');
-                card.className = 'bg-white p-6 rounded-2xl shadow-lg cursor-pointer hover:shadow-xl transition-shadow';
-                card.innerHTML = `
-                    <div class="flex items-center space-x-4">
-                        <img src="${profilePic}" alt="Profile" class="w-16 h-16 rounded-full object-cover">
-                        <div>
-                            <h3 class="text-xl font-bold text-gray-800">${user.firstName} ${user.lastName}</h3>
-                            <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
-                        </div>
-                    </div>
-                    <div class="mt-4 flex justify-between items-center">
-                        <div>
-                            <p class="text-xs font-semibold text-gray-500">คะแนนประสิทธิภาพ</p>
-                            <p class="text-3xl font-bold ${scoreColor}">${kpiScore}</p>
-                        </div>
-                        <div class="grid grid-cols-4 gap-2 text-center text-xs">
-                            <div><p class="font-bold text-blue-500">${createdCount}</p><p>สร้าง</p></div>
-                            <div><p class="font-bold text-green-500">${checkedCount}</p><p>เช็ค</p></div>
-                            <div><p class="font-bold text-purple-500">${receivedCount}</p><p>รับ</p></div>
-                            <div><p class="font-bold text-red-500">${reportedIssuesCount}</p><p>รายงาน</p></div>
-                        </div>
-                    </div>
-                    <div class="mt-2 text-center text-sm text-gray-600">
-                        <p>พบปัญหา: ${foundIssuesCount} รายการ</p>
-                    </div>
-                    <div class="mt-4 admin-supervisor-only">
-                        <button class="give-star-points-btn w-full py-2 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200" data-user-id="${user.id}">
-                            <span class="small-star">★</span> ให้คะแนนดาว
-                        </button>
-                    </div>
-                `;
-                card.addEventListener('click', () => renderKpiDetails(user));
-                summaryContainer.appendChild(card);
-            });
-        } else {
-            // ถ้าไม่ใช่ Admin หรือ Supervisor ให้แสดงเฉพาะ KPI ของตัวเอง
-            const user = currentUserProfile;
+        allUsers.forEach(user => {
+            if (user.role === 'Admin') return; // Don't show admin in KPI list
             const createdCount = [...allTransfersData, ...completedTransfersData].filter(t => t.createdByUid === user.id).length;
             const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === user.id).length;
             const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
@@ -2984,14 +2726,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // KPI Calculation: Checked + Created + Found Issues + Reported Issues + Received + Stars
             const kpiScore = checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
             const scoreColor = kpiScore > 10 ? 'text-green-500' : kpiScore > 0 ? 'text-blue-500' : 'text-red-500';
-            
             const card = document.createElement('div');
             card.className = 'bg-white p-6 rounded-2xl shadow-lg cursor-pointer hover:shadow-xl transition-shadow';
             card.innerHTML = `
                 <div class="flex items-center space-x-4">
                     <img src="${profilePic}" alt="Profile" class="w-16 h-16 rounded-full object-cover">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-800">KPI ของฉัน</h3>
+                        <h3 class="text-xl font-bold text-gray-800">${user.firstName} ${user.lastName}</h3>
                         <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
                     </div>
                 </div>
@@ -3010,11 +2751,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="mt-2 text-center text-sm text-gray-600">
                     <p>พบปัญหา: ${foundIssuesCount} รายการ</p>
                 </div>
+                <div class="mt-4 admin-supervisor-only">
+                    <button class="give-star-points-btn w-full py-2 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200" data-user-id="${user.id}">
+                        <span class="small-star">★</span> ให้คะแนนดาว
+                    </button>
+                </div>
             `;
             card.addEventListener('click', () => renderKpiDetails(user));
             summaryContainer.appendChild(card);
-        }
-        
+        });
         renderUserManagement();
         
         // Add event listeners to star points buttons
@@ -3026,80 +2771,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    function exportKpiData() {
-        const button = document.getElementById('export-kpi-btn');
-        button.disabled = true;
-        button.innerHTML = `<div class="loading-spinner w-4 h-4 border-white border-t-transparent rounded-full inline-block mr-2"></div> กำลังสร้าง...`;
-        
-        try {
-            const kpiData = allUsers
-                .filter(user => user.role !== 'Admin')
-                .map(user => {
-                    const createdCount = [...allTransfersData, ...completedTransfersData].filter(t => t.createdByUid === user.id).length;
-                    const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === user.id).length;
-                    const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
-                    const reportedIssuesCount = Object.values(issuesData).flat().filter(i => i.reportedByUid === user.id).length;
-                    const foundIssuesCount = Object.values(issuesData).flat().filter(i => i.checkerUid === user.id).length;
-                    const userScores = allScores.filter(s => s.userId === user.id);
-                    const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
-                    
-                    const kpiScore = checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
-                    
-                    return {
-                        'ชื่อ-นามสกุล': `${user.firstName} ${user.lastName}`,
-                        'ตำแหน่ง': user.role || 'Officer',
-                        'สร้าง TFOR': createdCount,
-                        'เช็คสินค้า': checkedCount,
-                        'รับสินค้า': receivedCount,
-                        'พบปัญหา': foundIssuesCount,
-                        'รายงานปัญหา': reportedIssuesCount,
-                        'คะแนนพิเศษ': totalStars,
-                        'คะแนนรวม': kpiScore
-                    };
-                });
-            
-            // สร้าง CSV
-            const headers = Object.keys(kpiData[0]);
-            const csvContent = [
-                headers.join(','),
-                ...kpiData.map(row => headers.map(header => `"${row[header]}"`).join(','))
-            ].join('\n');
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `kpi_data_${new Date().toISOString().split('T')[0]}.csv`;
-            link.click();
-            
-            showNotification('ส่งออกข้อมูล KPI สำเร็จ');
-        } catch (error) {
-            console.error('Error exporting KPI data:', error);
-            showNotification('เกิดข้อผิดพลาดในการส่งออกข้อมูล', false);
-        } finally {
-            button.disabled = false;
-            button.innerHTML = `
-                <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Export
-            `;
-        }
-    }
-    
     function renderUserManagement() {
-        // ตรวจสอบว่าเป็น Admin หรือ Supervisor หรือไม่
-        const isAdmin = currentUserProfile.role === 'Admin';
-        const isSupervisor = currentUserProfile.role === 'Supervisor';
-        
-        if (!isAdmin && !isSupervisor) {
-            // ถ้าไม่ใช่ Admin หรือ Supervisor ให้ซ่อนส่วนจัดการผู้ใช้
-            const container = document.getElementById('user-list-container');
-            if (container) {
-                container.style.display = 'none';
-            }
-            return;
-        }
-        
         const container = document.getElementById('user-list-container');
         container.innerHTML = '';
         const table = document.createElement('table');
@@ -3164,6 +2836,31 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUIForRoles();
     }
     
+    function showDeleteUserConfirmation(uid, email) {
+        showConfirmationModal(
+            `คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้งาน "${email}"? การกระทำนี้ไม่สามารถกู้คืนได้`,
+            () => deleteUser(uid)
+        );
+    }
+    
+    async function deleteUser(uid) {
+        try {
+            // Delete the user document from Firestore
+            await deleteDoc(doc(db, "users", uid));
+            
+            // Remove the user from the local allUsers array
+            allUsers = allUsers.filter(user => user.id !== uid);
+            
+            // Re-render the KPI view to update the user list
+            renderKpiView();
+            
+            showNotification("ลบผู้ใช้งานสำเร็จ");
+        } catch (error) {
+            console.error("Error deleting user:", error);
+            showNotification("เกิดข้อผิดพลาดในการลบผู้ใช้งาน", false);
+        }
+    }
+    
     function getMillis(timestamp) {
         if (!timestamp) return 0;
         if (typeof timestamp.toMillis === 'function') {
@@ -3207,20 +2904,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const stars = '★'.repeat(Math.abs(score.score));
                 
                 return `
-                <div class="p-3 bg-gray-50 rounded-lg">
-                    <p class="font-semibold">${score.reason} <span class="${starColor}">${stars}</span></p>
-                    <p class="text-xs text-gray-500">โดย: ${score.awardedByName} - ${scoreDate}</p>
-                    ${score.notes ? `<p class="text-sm text-gray-600 italic mt-1">"${score.notes}"</p>` : ''}
+                <div class="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                    <div>
+                        <p class="font-semibold">${score.reason} <span class="${starColor}">${stars}</span></p>
+                        <p class="text-xs text-gray-500">โดย: ${score.awardedByName} - ${scoreDate}</p>
+                        ${score.notes ? `<p class="text-sm text-gray-600 italic mt-1">"${score.notes}"</p>` : ''}
+                    </div>
+                    <div class="admin-supervisor-only">
+                        <button class="delete-score-btn text-red-400 hover:text-red-600" data-score-id="${score.id}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
                 </div>
                 `}).join('');
         }
-        
-        // ตรวจสอบว่าเป็นการดู KPI ของตัวเองหรือไม่
-        const isOwnProfile = user.id === currentUserProfile.id;
-        const isAdmin = currentUserProfile.role === 'Admin';
-        const isSupervisor = currentUserProfile.role === 'Supervisor';
-        const canManage = isAdmin || isSupervisor;
-        
         container.innerHTML = `
             <button id="back-to-kpi-summary" class="mb-6 px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">← กลับไปที่สรุป</button>
             <div class="flex flex-col sm:flex-row items-center justify-between mb-6">
@@ -3266,21 +2963,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `;
-        
-        // แสดงส่วนจัดการผู้ใช้เฉพาะ Admin และ Supervisor
-        if (canManage) {
-            const userManagementSection = document.createElement('div');
-            userManagementSection.className = 'mt-8 admin-supervisor-only';
-            userManagementSection.innerHTML = `
-                <h3 class="text-xl font-semibold mb-4">จัดการผู้ใช้</h3>
-                <div class="flex gap-2">
-                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">แก้ไขข้อมูล</button>
-                    <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">ลบผู้ใช้</button>
-                </div>
-            `;
-            container.appendChild(userManagementSection);
-        }
-        
         container.classList.remove('hidden');
         const kpiCtx = document.getElementById('kpi-user-chart').getContext('2d');
         currentChartInstances.kpiChart = new Chart(kpiCtx, {
