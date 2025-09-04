@@ -45,10 +45,12 @@ body {
 .event-dot-green { background-color: #22c55e; } /* Completed */
 .event-dot-red { background-color: #ef4444; } /* Issue */
 .event-dot-purple { background-color: #8b5cf6; } /* Scheduled */
+
 /* Role-based visibility classes (Legacy, now handled by JS) */
 [data-permission] {
     display: none;
 }
+
 .star-rating .star {
     color: #d1d5db; /* gray-300 */
     cursor: pointer;
@@ -149,6 +151,7 @@ body {
     overflow-x: auto;
     margin-bottom: 20px;
 }
+
 /* Star System Styles */
 .star-display {
     display: flex;
@@ -209,6 +212,7 @@ body {
     font-size: 1.5rem;
     margin-right: 5px;
 }
+
 /* Loading Container */
 .loading-container {
     position: fixed;
@@ -222,6 +226,7 @@ body {
     align-items: center;
     z-index: 9999;
 }
+
 .loading-spinner {
     width: 50px;
     height: 50px;
@@ -230,38 +235,47 @@ body {
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
 /* Improved UI/UX */
 .button-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
+
 table {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
+
 thead {
     background-color: #f8fafc;
 }
+
 th, td {
     padding: 12px 15px;
 }
+
 tr:hover {
     background-color: #f1f5f9;
 }
+
 .card {
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     transition: all 0.3s ease;
 }
+
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
 }
+
 /* KPI Issue Indicator */
 .kpi-issue-indicator {
     display: inline-flex;
@@ -275,35 +289,43 @@ tr:hover {
     font-weight: 600;
     color: #b91c1c;
 }
+
 /* Custom styles for pending TFORs */
 .pending-tfor-card {
     background-color: #fffbeb;
     border-left: 4px solid #f59e0b;
 }
+
 .waiting-receive-card {
     background-color: #f0f9ff;
     border-left: 4px solid #0ea5e9;
 }
+
 /* LOG Table Styles */
 .log-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
 }
+
 .log-table th, .log-table td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
 }
+
 .log-table th {
     background-color: #f2f2f2;
 }
+
 .log-table tr:nth-child(even) {
     background-color: #f9f9f9;
 }
+
 .log-table tr:hover {
     background-color: #f1f5f9;
 }
+
 /* ปุ่มวางแผนงาน */
 .plan-work-btn {
     background-color: #8b5cf6;
@@ -318,10 +340,12 @@ tr:hover {
     align-items: center;
     gap: 4px;
 }
+
 .plan-work-btn:hover {
     background-color: #7c3aed;
     transform: translateY(-1px);
 }
+
 /* ปฏิทินสำหรับเลือกวันที่วางแผน */
 .calendar-picker {
     position: absolute;
@@ -338,17 +362,20 @@ tr:hover {
 .calendar-picker.active {
     display: block;
 }
+
 .calendar-picker-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
 }
+
 .calendar-picker-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 4px;
 }
+
 .calendar-picker-day {
     aspect-ratio: 1;
     display: flex;
@@ -358,16 +385,20 @@ tr:hover {
     cursor: pointer;
     transition: all 0.2s;
 }
+
 .calendar-picker-day:hover {
     background-color: #f3f4f6;
 }
+
 .calendar-picker-day.selected {
     background-color: #8b5cf6;
     color: white;
 }
+
 .calendar-picker-day.other-month {
     color: #d1d5db;
 }
+
 .calendar-picker-day.today {
     font-weight: bold;
     color: #8b5cf6;
@@ -376,6 +407,7 @@ tr:hover {
 .calendar-day {
     position: relative;
 }
+
 .calendar-tooltip {
     position: absolute;
     z-index: 10;
@@ -393,10 +425,12 @@ tr:hover {
     transform: translateX(-50%);
     margin-top: 5px;
 }
+
 .calendar-day:hover .calendar-tooltip {
     opacity: 1;
     pointer-events: auto;
 }
+
 .calendar-tooltip::before {
     content: '';
     position: absolute;
@@ -407,140 +441,22 @@ tr:hover {
     border-style: solid;
     border-color: transparent transparent white transparent;
 }
+
 /* Custom Scrollbar for Comments */
 #comments-display::-webkit-scrollbar {
     width: 8px;
 }
+
 #comments-display::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
 }
+
 #comments-display::-webkit-scrollbar-thumb {
     background: #ccc;
     border-radius: 10px;
 }
+
 #comments-display::-webkit-scrollbar-thumb:hover {
     background: #aaa;
-}
-
-/* สไตล์สำหรับหน้ารอรับสินค้า */
-.product-card {
-    border-left: 4px solid #3b82f6;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-.product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
-}
-.action-btn {
-    transition: all 0.2s ease;
-}
-.action-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-/* สไตล์สำหรับ empty state */
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem 1rem;
-    text-align: center;
-}
-.empty-state-icon {
-    color: #d1d5db;
-    margin-bottom: 1rem;
-}
-.empty-state-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #4b5563;
-    margin-bottom: 0.5rem;
-}
-.empty-state-description {
-    color: #6b7280;
-    max-w-md;
-}
-/* ปรับปรุงหัวข้อหน้า */
-.page-header {
-    margin-bottom: 2rem;
-}
-.page-header-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    border-radius: 9999px;
-    margin-bottom: 1rem;
-}
-/* ปรับปรุง progress bar */
-.progress-bar {
-    height: 0.5rem;
-    background-color: #e5e7eb;
-    border-radius: 9999px;
-    overflow: hidden;
-}
-.progress-bar-fill {
-    height: 100%;
-    background-color: #3b82f6;
-    border-radius: 9999px;
-    transition: width 0.3s ease;
-}
-/* ปรับปรุง badge */
-.badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-.badge-warning {
-    background-color: #fef3c7;
-    color: #92400e;
-}
-/* ปรับปรุง card details */
-.card-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.card-detail-item {
-    display: flex;
-    align-items: center;
-    font-size: 0.875rem;
-    color: #4b5563;
-}
-.card-detail-icon {
-    margin-right: 0.5rem;
-    flex-shrink: 0;
-}
-/* ปรับปรุง card footer */
-.card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #e5e7eb;
-}
-.card-status {
-    display: flex;
-    align-items: center;
-    font-size: 0.875rem;
-}
-.status-checked {
-    color: #10b981;
-    font-weight: 500;
-}
-.status-received {
-    color: #8b5cf6;
-    font-weight: 500;
-}
-.status-separator {
-    margin: 0 0.5rem;
-    color: #9ca3af;
 }
