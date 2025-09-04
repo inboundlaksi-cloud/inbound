@@ -655,13 +655,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         tforBlock.querySelector('.remove-tfor-button').addEventListener('click', () => tforBlock.remove());
-
         // Listeners for Linked TFORs
         const addBtn = tforBlock.querySelector('.add-linked-tfor-btn');
         const input = tforBlock.querySelector('.linked-tfor-input');
         const list = tforBlock.querySelector('.linked-tfor-list');
         const year = new Date().getFullYear().toString().substr(-2);
-
         addBtn.addEventListener('click', () => {
             const tforValue = input.value.trim();
             if (tforValue && /^\d{4}$/.test(tforValue)) {
@@ -725,7 +723,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const palletNotes = block.querySelector('.pallet-notes').value;
                 const linkedTforElements = block.querySelectorAll('.linked-tfor-list span');
                 const linkedTfors = Array.from(linkedTforElements).map(span => span.textContent);
-
                 const tforData = {
                     deliveryDate, licensePlate,
                     images: uploadedImagesBase64,
@@ -1379,7 +1376,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="linked-tfor-display" class="mt-4"></div>
             <div class="mt-4"><p class="text-sm font-semibold text-gray-500 mb-2">รูปภาพรวม</p>${imagesHTML}</div>
         `;
-
         const linkedTforContainer = document.getElementById('linked-tfor-display');
         if (currentTforData.linkedTfors && currentTforData.linkedTfors.length > 0) {
             linkedTforContainer.innerHTML = `
@@ -2078,32 +2074,145 @@ document.addEventListener('DOMContentLoaded', () => {
         );
         
         if (checkedNotReceived.length === 0) {
-            checkedTforContainer.innerHTML = '<p class="text-gray-500 text-center">ไม่มีรายการที่ต้องรับสินค้า</p>';
+            checkedTforContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                    </div>
+                    <h3 class="empty-state-title">ไม่มีรายการที่ต้องรับสินค้า</h3>
+                    <p class="empty-state-description">รายการที่เช็คแล้วและรอการรับสินค้าจะแสดงที่นี่</p>
+                </div>
+            `;
         } else {
+            // สร้างหัวข้อสำหรับหน้านี้
+            const headerSection = document.createElement('div');
+            headerSection.className = 'mb-8 text-center';
+            headerSection.innerHTML = `
+                <div class="inline-flex items-center justify-center p-4 bg-blue-50 rounded-full mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">รายการที่เช็คแล้วแต่ยังไม่ได้รับ</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">รายการที่กดยืนยันการเช็คพาเลทแล้ว แต่ยังไม่ได้กดรับสินค้า</p>
+            `;
+            checkedTforContainer.appendChild(headerSection);
+            
+            // สร้างการ์ดสำหรับแต่ละรายการ
+            const cardsContainer = document.createElement('div');
+            cardsContainer.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+            
             checkedNotReceived.forEach(data => {
                 const card = document.createElement('div');
-                card.className = 'bg-white p-6 rounded-2xl shadow-md border border-gray-200 cursor-pointer hover:shadow-lg waiting-receive-card';
+                card.className = 'product-card bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1';
                 
                 const checkedCount = data.checkedPallets ? data.checkedPallets.length : 0;
                 const receivedCount = data.receivedPallets ? data.receivedPallets.length : 0;
                 const totalCount = data.palletNumbers ? data.palletNumbers.length : 0;
+                const progressPercentage = totalCount > 0 ? Math.round((receivedCount / totalCount) * 100) : 0;
+                
+                // แสดง TFOR พ่วง
+                const linkedTforsHtml = data.linkedTfors && data.linkedTfors.length > 0 
+                    ? `<div class="flex flex-wrap gap-1 mt-1">
+                        ${data.linkedTfors.map(tfor => `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">${tfor}</span>`).join('')}
+                    </div>`
+                    : '';
                 
                 card.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div><p class="text-sm text-gray-500">ทะเบียนรถ</p><p class="font-semibold">${data.licensePlate}</p></div>
-                        <div><p class="text-sm text-gray-500">TFOR</p><p class="font-semibold">...${data.tforNumber}</p></div>
-                        <div><p class="text-sm text-gray-500">สาขา</p><p class="font-semibold">${data.branch}</p></div>
-                        <div><p class="text-sm text-gray-500">จำนวนพาเลท</p><p class="font-semibold">${checkedCount}/${totalCount} (เช็คแล้ว ${checkedCount}, รับแล้ว ${receivedCount})</p></div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <div class="flex items-center mb-2">
+                                    <div class="bg-blue-100 p-2 rounded-lg mr-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-gray-800">TFOR ...${data.tforNumber}</h3>
+                                        <p class="text-sm text-gray-500">${data.branch}</p>
+                                    </div>
+                                </div>
+                                ${linkedTforsHtml}
+                            </div>
+                            <div class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-1 rounded-full">
+                                รอรับสินค้า
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="flex items-center text-sm text-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span>ทะเบียนรถ: ${data.licensePlate}</span>
+                            </div>
+                            
+                            <div class="flex items-center text-sm text-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>วันที่: ${data.deliveryDate}</span>
+                            </div>
+                            
+                            <div class="flex items-center text-sm text-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                <span>จำนวนพาเลท: ${totalCount}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">ความคืบหน้าการรับสินค้า</span>
+                                <span class="font-medium">${receivedCount}/${totalCount}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${progressPercentage}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <div class="text-sm">
+                                <span class="text-green-600 font-medium">เช็คแล้ว: ${checkedCount}</span>
+                                <span class="mx-2">•</span>
+                                <span class="text-purple-600 font-medium">รับแล้ว: ${receivedCount}</span>
+                            </div>
+                            <button class="action-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                                ไปรับสินค้า
+                            </button>
+                        </div>
                     </div>
                 `;
-                card.addEventListener('click', () => {
+                
+                // เพิ่ม event listener สำหรับปุ่ม "ไปรับสินค้า"
+                card.querySelector('.action-btn').addEventListener('click', () => {
                     currentTforData = data;
                     showMainView(views.transfers);
                     renderCheckView();
                     showSubView(checkView);
                 });
-                checkedTforContainer.appendChild(card);
+                
+                // เพิ่ม event listener สำหรับการคลิกที่การ์ด
+                card.addEventListener('click', (e) => {
+                    if (!e.target.closest('.action-btn')) {
+                        currentTforData = data;
+                        showMainView(views.transfers);
+                        renderCheckView();
+                        showSubView(checkView);
+                    }
+                });
+                
+                cardsContainer.appendChild(card);
             });
+            
+            checkedTforContainer.appendChild(cardsContainer);
         }
     }
     
@@ -2170,7 +2279,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pendingContainer = pendingSection.querySelector('.grid');
             pendingTransfers.forEach(transfer => {
                 const card = document.createElement('div');
-                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-yellow-500 cursor-pointer hover:shadow-lg transition-shadow';
+                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-yellow-500 cursor-pointer hover:bg-gray-100';
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
@@ -2239,7 +2348,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const completedContainer = completedSection.querySelector('.grid');
             completedTransfers.forEach(transfer => {
                 const card = document.createElement('div');
-                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow';
+                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-green-500 cursor-pointer hover:bg-gray-100';
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
@@ -2888,11 +2997,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
         
         // Count issues reported by this user
-        const allIssues = Object.values(issuesData).flat();
-        const reportedIssuesCount = allIssues.filter(i => i.reportedByUid === user.id).length;
+        const allUserIssues = Object.values(issuesData).flat();
+        const reportedIssuesCount = allUserIssues.filter(i => i.reportedByUid === user.id).length;
         
         // Count issues found by this user (where they were the checker)
-        const foundIssuesCount = allIssues.filter(i => i.checkerUid === user.id).length;
+        const foundIssuesCount = allUserIssues.filter(i => i.checkerUid === user.id).length;
         
         const performanceScore = checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
         const issueRate = checkedCount > 0 ? ((reportedIssuesCount / checkedCount) * 100).toFixed(1) : 0;
@@ -2917,6 +3026,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 `}).join('');
+            });
         }
         container.innerHTML = `
             <button id="back-to-kpi-summary" class="mb-6 px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">← กลับไปที่สรุป</button>
@@ -3460,109 +3570,3 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('backup-restore-btn')?.addEventListener('click', () => {
         backupModal.classList.remove('hidden');
-        backupModal.classList.add('flex');
-    });
-    
-    document.getElementById('backup-modal-cancel')?.addEventListener('click', () => {
-        backupModal.classList.add('hidden');
-        backupModal.classList.remove('flex');
-    });
-    
-    document.getElementById('backup-data-btn').addEventListener('click', async () => {
-        const allData = {
-            transfers: [...allTransfersData, ...completedTransfersData],
-            issues: Object.values(issuesData).flat(),
-            scores: allScores,
-            users: allUsers,
-            starPoints: allStarPoints
-        };
-         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allData, null, 2));
-         const downloadAnchorNode = document.createElement('a');
-         downloadAnchorNode.setAttribute("href", dataStr);
-         downloadAnchorNode.setAttribute("download", `inbound_backup_${new Date().toISOString().split('T')[0]}.json`);
-         document.body.appendChild(downloadAnchorNode);
-         downloadAnchorNode.click();
-         document.body.removeChild(downloadAnchorNode);
-         showNotification("กำลังดาวน์โหลดไฟล์ Backup...");
-    });
-    
-    const restoreFileInput = document.getElementById('restore-file-input');
-    const restoreDataBtn = document.getElementById('restore-data-btn');
-    let restoreFile = null;
-    
-    restoreFileInput.addEventListener('change', (e) => {
-        restoreFile = e.target.files[0];
-        if (restoreFile) {
-            restoreDataBtn.disabled = false;
-        } else {
-            restoreDataBtn.disabled = true;
-        }
-    });
-    
-    restoreDataBtn.addEventListener('click', () => {
-        if (!restoreFile) {
-            showNotification("กรุณาเลือกไฟล์ Backup ก่อน", false);
-            return;
-        }
-        showConfirmationModal("การกู้คืนข้อมูลจะเขียนทับข้อมูลที่มีอยู่ทั้งหมด คุณแน่ใจหรือไม่?", () => {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (data.transfers && data.issues && data.scores && data.users && data.starPoints) {
-                        restoreDataBtn.disabled = true;
-                        restoreDataBtn.innerHTML = `<div class="loading-spinner w-5 h-5 border-white border-t-transparent rounded-full inline-block mr-2"></div> กำลังกู้คืน...`;
-                        
-                        // This is a simplified restore. A real-world scenario would need more robust error handling and batching.
-                        const batch = writeBatch(db);
-                        data.transfers.forEach(item => {
-                            const { id, ...itemData } = item; // Separate ID from data
-                            batch.set(doc(db, "transfers", id), itemData);
-                        });
-                        data.issues.forEach(item => {
-                             const { id, ...itemData } = item;
-                            batch.set(doc(db, "issues", id), itemData);
-                        });
-                        data.scores.forEach(item => {
-                             const { id, ...itemData } = item;
-                            batch.set(doc(db, "scores", id), itemData);
-                        });
-                        data.starPoints.forEach(item => {
-                             const { id, ...itemData } = item;
-                            batch.set(doc(db, "starPoints", id), itemData);
-                        });
-                        await batch.commit();
-                        showNotification("กู้คืนข้อมูลสำเร็จ!");
-                        backupModal.classList.add('hidden');
-                        backupModal.classList.remove('flex');
-                    } else {
-                        throw new Error("Invalid backup file format.");
-                    }
-                } catch (error) {
-                    console.error("Restore error:", error);
-                    showNotification("ไฟล์ Backup ไม่ถูกต้อง หรือเกิดข้อผิดพลาด", false);
-                } finally {
-                    restoreDataBtn.disabled = false;
-                    restoreDataBtn.textContent = 'Restore ข้อมูล';
-                    restoreFileInput.value = '';
-                }
-            };
-            reader.readAsText(restoreFile);
-        });
-    });
-    
-    // LOG Function
-    async function logAction(action, details) {
-        try {
-            await addDoc(collection(db, "logs"), {
-                action: action,
-                details: details,
-                userId: currentUser.uid,
-                userName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                timestamp: serverTimestamp()
-            });
-        } catch (error) {
-            console.error("Error logging action:", error);
-        }
-    }
-});
