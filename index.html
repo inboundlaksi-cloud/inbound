@@ -420,6 +420,45 @@
                 </div>
             </header>
             <main class="container mx-auto px-4 py-8">
+                <!-- ส่วนใหม่ที่เพิ่มเข้ามา -->
+                <div id="kpi-user-status" class="hidden mb-4 p-3 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-blue-800">คุณกำลังดู KPI <span id="kpi-view-type">ของคุณเอง</span></p>
+                </div>
+                
+                <div id="kpi-admin-controls" class="hidden mb-4 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800">KPI พนักงานทั้งหมด</h2>
+                    <div class="flex gap-2">
+                        <button id="refresh-kpi-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            รีเฟรช
+                        </button>
+                        <button id="export-kpi-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Export
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="kpi-summary-section" class="hidden mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="text-sm font-semibold text-gray-600">พนักงานทั้งหมด</h3>
+                        <p id="total-employees" class="text-2xl font-bold">0</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="text-sm font-semibold text-gray-600">คะแนนเฉลี่ย</h3>
+                        <p id="average-score" class="text-2xl font-bold">0</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="text-sm font-semibold text-gray-600">พนักงานทำงานดี</h3>
+                        <p id="top-performers" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+                
+                <!-- ส่วนเดิม -->
                 <div id="kpi-summary-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
                 <div id="kpi-details-container" class="mt-8 hidden bg-white rounded-2xl shadow-lg p-8"></div>
                 <div id="user-management-container" data-permission="canManageUsers" class="mt-12">
