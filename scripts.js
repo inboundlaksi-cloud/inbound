@@ -453,11 +453,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updateMainMenuSummary() {
         const todayString = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        // แก้ไข: ให้นับเฉพาะ TFOR ที่มีวันที่เข้ามาจริงในวันนี้ (deliveryDate)
+        const todaysPlanCount = allTransfersData.filter(t => {
+            return t.deliveryDate === todayString;
+        }).length;
+        
         const pendingCount = allTransfersData.filter(t => !t.scheduledDate).length;
-        const todaysPlanCount = allTransfersData.filter(t => t.scheduledDate === todayString).length;
         const completedTodayCount = completedTransfersData.filter(t => t.completionDate === todayString).length;
         
-        // แสดงรายการมีปัญหาเฉพาะภายในวันนั้นๆ
+        // แก้ไข: แสดงรายการมีปัญหาเฉพาะภายในวันนั้นๆ
         const todayIssues = Object.values(issuesData)
             .flat()
             .filter(issue => issue.reportDate === todayString);
@@ -655,13 +660,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         tforBlock.querySelector('.remove-tfor-button').addEventListener('click', () => tforBlock.remove());
-
         // Listeners for Linked TFORs
         const addBtn = tforBlock.querySelector('.add-linked-tfor-btn');
         const input = tforBlock.querySelector('.linked-tfor-input');
         const list = tforBlock.querySelector('.linked-tfor-list');
         const year = new Date().getFullYear().toString().substr(-2);
-
         addBtn.addEventListener('click', () => {
             const tforValue = input.value.trim();
             if (tforValue && /^\d{4}$/.test(tforValue)) {
@@ -725,7 +728,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const palletNotes = block.querySelector('.pallet-notes').value;
                 const linkedTforElements = block.querySelectorAll('.linked-tfor-list span');
                 const linkedTfors = Array.from(linkedTforElements).map(span => span.textContent);
-
                 const tforData = {
                     deliveryDate, licensePlate,
                     images: uploadedImagesBase64,
@@ -1379,7 +1381,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="linked-tfor-display" class="mt-4"></div>
             <div class="mt-4"><p class="text-sm font-semibold text-gray-500 mb-2">รูปภาพรวม</p>${imagesHTML}</div>
         `;
-
         const linkedTforContainer = document.getElementById('linked-tfor-display');
         if (currentTforData.linkedTfors && currentTforData.linkedTfors.length > 0) {
             linkedTforContainer.innerHTML = `
@@ -2115,11 +2116,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
         const todayString = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
         
-        // Get all transfers (both pending and completed)
-        const allTransfers = [...allTransfersData, ...completedTransfersData];
-        
-        // Filter transfers scheduled for today
-        const todaysTransfers = allTransfers.filter(t => t.scheduledDate === todayString);
+        // แก้ไข: ดึงเฉพาะ TFOR ที่มีวันที่เข้ามาจริงในวันนี้ (deliveryDate)
+        const todaysTransfers = allTransfersData.filter(t => t.deliveryDate === todayString);
         
         if (todaysTransfers.length === 0) {
             container.innerHTML = `
@@ -2127,50 +2125,133 @@ document.addEventListener('DOMContentLoaded', () => {
                     <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
-                    <h3 class="text-xl font-bold text-gray-700 mb-2">ไม่มีงานวางแผนสำหรับวันนี้</h3>
-                    <p class="text-gray-500">คุณสามารถวางแผนงานได้ที่หน้าปฏิทิน</p>
+                    <h3 class="text-xl font-bold text-gray-700 mb-2">ไม่มี TFOR ใหม่สำหรับวันนี้</h3>
+                    <p class="text-gray-500">วันนี้ยังไม่มีการบันทึก TFOR ใหม่</p>
                     <button class="mt-4 px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 plan-work-permission">
-                        วางแผนงานสำหรับวันนี้
+                        บันทึก TFOR ใหม่
                     </button>
                 </div>
             `;
             
-            // Add event listener to the planning button
+            // เพิ่ม event listener สำหรับปุ่มบันทึก TFOR ใหม่
             const planButton = container.querySelector('.plan-work-permission');
             if (planButton) {
                 planButton.addEventListener('click', () => {
-                    showMainView(views.calendar);
-                    renderCalendar(new Date());
-                    // Show scheduling modal for today
-                    setTimeout(() => {
-                        showSchedulingModal(todayString);
-                    }, 300);
+                    showMainView(views.transfers);
+                    initializeForm();
+                    showSubView(formView);
                 });
             }
             
             return;
         }
         
-        // Group transfers by status
-        const pendingTransfers = todaysTransfers.filter(t => !t.isCompleted);
-        const completedTransfers = todaysTransfers.filter(t => t.isCompleted);
+        // แสดงหัวข้อที่ชัดเจนขึ้น
+        container.innerHTML = `
+            <div class="mb-6 text-center">
+                <h2 class="text-2xl font-bold text-gray-800">TFOR ที่เข้ามาใหม่วันนี้</h2>
+                <p class="text-gray-600">รายการ TFOR ที่บันทึกเข้ามาในวันที่ ${todayString}</p>
+            </div>
+        `;
         
-        // Render pending transfers
-        if (pendingTransfers.length > 0) {
-            const pendingSection = document.createElement('div');
-            pendingSection.className = 'mb-8';
-            pendingSection.innerHTML = `
+        // สร้างการ์ดสำหรับแสดง TFOR แต่ละรายการ
+        const transfersContainer = document.createElement('div');
+        transfersContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
+        
+        todaysTransfers.forEach(transfer => {
+            const card = document.createElement('div');
+            card.className = 'bg-white p-6 rounded-2xl shadow-md border-l-4 border-blue-500 cursor-pointer hover:shadow-lg transition-shadow';
+            
+            // แสดงสถานะของ TFOR
+            let statusText = 'ยังไม่ได้วางแผน';
+            let statusColor = 'bg-gray-100 text-gray-800';
+            
+            if (transfer.scheduledDate) {
+                statusText = 'วางแผนแล้ว';
+                statusColor = 'bg-purple-100 text-purple-800';
+            }
+            
+            if (transfer.isCompleted) {
+                statusText = 'เช็คเสร็จแล้ว';
+                statusColor = 'bg-green-100 text-green-800';
+            }
+            
+            // แสดง TFOR พ่วง
+            const linkedTforsHtml = transfer.linkedTfors && transfer.linkedTfors.length > 0 
+                ? `<div class="mt-2"><span class="text-sm font-medium">TFOR พ่วง:</span> ${transfer.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')}</div>`
+                : '';
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <span class="text-xs px-2 py-1 rounded-full ${statusColor}">${statusText}</span>
+                        <h3 class="text-xl font-bold mt-2">...${transfer.tforNumber}</h3>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-500">พาเลท</p>
+                        <p class="text-xl font-bold">${transfer.palletCount}</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <p class="text-sm text-gray-500">ทะเบียนรถ</p>
+                        <p class="font-medium">${transfer.licensePlate}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">สาขาต้นทาง</p>
+                        <p class="font-medium">${transfer.branch}</p>
+                    </div>
+                </div>
+                ${linkedTforsHtml}
+                <div class="mt-4 text-right">
+                    <button class="text-sm text-blue-600 hover:text-blue-800 font-medium plan-work-permission" data-id="${transfer.id}">
+                        วางแผนงาน →
+                    </button>
+                </div>
+            `;
+            
+            // เพิ่ม event listener สำหรับการคลิกที่การ์ด
+            card.addEventListener('click', (e) => {
+                // ถ้าคลิกที่ปุ่มวางแผนงาน ไม่ต้องทำอะไร (จะถูกจัดการโดยปุ่มนั้นโดยตรง)
+                if (e.target.classList.contains('plan-work-permission')) return;
+                
+                currentTforData = transfer;
+                showMainView(views.transfers);
+                renderCheckView();
+                showSubView(checkView);
+            });
+            
+            // เพิ่ม event listener สำหรับปุ่มวางแผนงาน
+            const planButton = card.querySelector('.plan-work-permission');
+            if (planButton) {
+                planButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showSchedulingModalForTransfer(transfer);
+                });
+            }
+            
+            transfersContainer.appendChild(card);
+        });
+        
+        container.appendChild(transfersContainer);
+        
+        // เพิ่มส่วนแสดง TFOR ที่วางแผนไว้สำหรับวันนี้ (ถ้ามี)
+        const scheduledForToday = allTransfersData.filter(t => t.scheduledDate === todayString && t.deliveryDate !== todayString);
+        if (scheduledForToday.length > 0) {
+            const scheduledSection = document.createElement('div');
+            scheduledSection.className = 'mt-12';
+            scheduledSection.innerHTML = `
                 <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
-                    งานที่รอดำเนินการ (${pendingTransfers.length})
+                    <span class="w-3 h-3 bg-purple-500 rounded-full mr-2"></span>
+                    งานที่วางแผนไว้สำหรับวันนี้ (${scheduledForToday.length})
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             `;
             
-            const pendingContainer = pendingSection.querySelector('.grid');
-            pendingTransfers.forEach(transfer => {
+            const scheduledContainer = scheduledSection.querySelector('.grid');
+            scheduledForToday.forEach(transfer => {
                 const card = document.createElement('div');
-                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-yellow-500 cursor-pointer hover:shadow-lg transition-shadow';
+                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-purple-500 cursor-pointer hover:shadow-lg transition-shadow';
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
@@ -2184,7 +2265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                     <div class="mt-3 flex justify-between items-center">
-                        <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
+                        <span class="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full">
                             โดย ${transfer.scheduledByName || 'N/A'}
                         </span>
                         <button class="text-xs text-red-500 hover:text-red-700 plan-work-permission" data-id="${transfer.id}">
@@ -2193,7 +2274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
                 
-                // Add click event to navigate to check view
+                // Add event listeners
                 card.addEventListener('click', (e) => {
                     if (!e.target.classList.contains('plan-work-permission')) {
                         currentTforData = transfer;
@@ -2203,8 +2284,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 
-                // Add event to cancel plan
-                card.querySelector('.plan-work-permission').addEventListener('click', async (e) => {
+                const cancelButton = card.querySelector('.plan-work-permission');
+                cancelButton.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     try {
                         await updateDoc(doc(db, "transfers", transfer.id), { 
@@ -2219,58 +2300,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 
-                pendingContainer.appendChild(card);
+                scheduledContainer.appendChild(card);
             });
             
-            container.appendChild(pendingSection);
-        }
-        
-        // Render completed transfers
-        if (completedTransfers.length > 0) {
-            const completedSection = document.createElement('div');
-            completedSection.innerHTML = `
-                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                    งานที่เสร็จสิ้น (${completedTransfers.length})
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-            `;
-            
-            const completedContainer = completedSection.querySelector('.grid');
-            completedTransfers.forEach(transfer => {
-                const card = document.createElement('div');
-                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow';
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="font-bold text-lg">...${transfer.tforNumber}</p>
-                            <p class="text-sm text-gray-600">${transfer.branch}</p>
-                            <p class="text-sm text-gray-500">${transfer.licensePlate}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-xs text-gray-500">พาเลท</p>
-                            <p class="font-bold">${transfer.palletCount}</p>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                            เสร็จสิ้น ${transfer.completionDate || 'N/A'}
-                        </span>
-                    </div>
-                `;
-                
-                // Add click event to navigate to check view
-                card.addEventListener('click', () => {
-                    currentTforData = transfer;
-                    showMainView(views.transfers);
-                    renderCheckView();
-                    showSubView(checkView);
-                });
-                
-                completedContainer.appendChild(card);
-            });
-            
-            container.appendChild(completedSection);
+            container.appendChild(scheduledSection);
         }
         
         // Update UI for roles
