@@ -3,7 +3,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 // Firestore Database
 import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
 // Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
@@ -13,15 +12,12 @@ const firebaseConfig = {
     messagingSenderId: "1080446836155",
     appId: "1:1080446836155:web:da8d3f12f76d83b408389e"
 };
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
-
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     const payload = {
@@ -84,7 +80,6 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
-
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -779,46 +774,262 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // NEW MODAL FUNCTIONS FOR EMPLOYEE SELECTION
+    async function showEmployeeSelectionModal(palletNum, callback) {
+        // สร้าง modal element
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                <h3 class="text-xl font-bold mb-4">เลือกพนักงานที่เช็คพาเลทที่ ${palletNum}</h3>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-2">เลือกพนักงานที่เข้าร่วมตรวจสอบ:</p>
+                    <div id="employee-list" class="max-h-60 overflow-y-auto space-y-2">
+                        <!-- รายชื่อพนักงานจะถูกเพิ่มที่นี่ -->
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button id="cancel-employee-selection" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">ยกเลิก</button>
+                    <button id="confirm-employee-selection" class="px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700">ยืนยัน</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // ดึงข้อมูลพนักงานทั้งหมดจากฐานข้อมูล
+        const employeeList = modal.querySelector('#employee-list');
+        allUsers.forEach(user => {
+            // ไม่แสดง Admin ในรายการ
+            if (user.role === 'Admin') return;
+            
+            const employeeItem = document.createElement('div');
+            employeeItem.className = 'flex items-center p-2 hover:bg-gray-100 rounded-lg';
+            employeeItem.innerHTML = `
+                <input type="checkbox" id="emp-${user.id}" class="employee-checkbox mr-3" value="${user.id}">
+                <label for="emp-${user.id}" class="flex items-center cursor-pointer flex-grow">
+                    <img src="${user.profilePictureUrl || 'https://placehold.co/40x40/e0e0e0/757575?text=?'}" alt="${user.firstName}" class="w-10 h-10 rounded-full mr-3">
+                    <div>
+                        <p class="font-medium">${user.firstName} ${user.lastName}</p>
+                        <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
+                    </div>
+                </label>
+            `;
+            employeeList.appendChild(employeeItem);
+            
+            // เลือกผู้ใช้ปัจจุบันโดยค่าเริ่มต้น
+            if (user.id === currentUser.uid) {
+                employeeItem.querySelector('input').checked = true;
+            }
+        });
+        
+        // จัดการการกดปุ่ม
+        modal.querySelector('#cancel-employee-selection').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('#confirm-employee-selection').addEventListener('click', () => {
+            const selectedEmployees = Array.from(modal.querySelectorAll('.employee-checkbox:checked'))
+                .map(checkbox => checkbox.value);
+            
+            if (selectedEmployees.length === 0) {
+                showNotification('กรุณาเลือกพนักงานอย่างน้อย 1 คน', false);
+                return;
+            }
+            
+            document.body.removeChild(modal);
+            callback(selectedEmployees);
+        });
+        
+        // ปิด modal เมื่อคลิกนอกกรอบ
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+
+    async function showIssueEmployeeSelectionModal(callback) {
+        // สร้าง modal element
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                <h3 class="text-xl font-bold mb-4">เลือกพนักงานที่ร่วมรายงานปัญหา</h3>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-2">เลือกพนักงานที่เข้าร่วมรายงานปัญหา:</p>
+                    <div id="issue-employee-list" class="max-h-60 overflow-y-auto space-y-2">
+                        <!-- รายชื่อพนักงานจะถูกเพิ่มที่นี่ -->
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button id="cancel-issue-employee-selection" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">ยกเลิก</button>
+                    <button id="confirm-issue-employee-selection" class="px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700">ยืนยัน</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // ดึงข้อมูลพนักงานทั้งหมดจากฐานข้อมูล
+        const employeeList = modal.querySelector('#issue-employee-list');
+        allUsers.forEach(user => {
+            // ไม่แสดง Admin ในรายการ
+            if (user.role === 'Admin') return;
+            
+            const employeeItem = document.createElement('div');
+            employeeItem.className = 'flex items-center p-2 hover:bg-gray-100 rounded-lg';
+            employeeItem.innerHTML = `
+                <input type="checkbox" id="issue-emp-${user.id}" class="issue-employee-checkbox mr-3" value="${user.id}">
+                <label for="issue-emp-${user.id}" class="flex items-center cursor-pointer flex-grow">
+                    <img src="${user.profilePictureUrl || 'https://placehold.co/40x40/e0e0e0/757575?text=?'}" alt="${user.firstName}" class="w-10 h-10 rounded-full mr-3">
+                    <div>
+                        <p class="font-medium">${user.firstName} ${user.lastName}</p>
+                        <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
+                    </div>
+                </label>
+            `;
+            employeeList.appendChild(employeeItem);
+            
+            // เลือกผู้ใช้ปัจจุบันโดยค่าเริ่มต้น
+            if (user.id === currentUser.uid) {
+                employeeItem.querySelector('input').checked = true;
+            }
+        });
+        
+        // จัดการการกดปุ่ม
+        modal.querySelector('#cancel-issue-employee-selection').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('#confirm-issue-employee-selection').addEventListener('click', () => {
+            const selectedEmployees = Array.from(modal.querySelectorAll('.issue-employee-checkbox:checked'))
+                .map(checkbox => checkbox.value);
+            
+            if (selectedEmployees.length === 0) {
+                showNotification('กรุณาเลือกพนักงานอย่างน้อย 1 คน', false);
+                return;
+            }
+            
+            document.body.removeChild(modal);
+            callback(selectedEmployees);
+        });
+        
+        // ปิด modal เมื่อคลิกนอกกรอบ
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+    
+    // MODIFIED handlePalletCheck FUNCTION
     async function handlePalletCheck(palletNum, buttonElement) {
         const isCurrentlyChecked = currentTforData.checkedPallets?.includes(palletNum);
-        if (buttonElement) {
-            buttonElement.classList.toggle('bg-green-500', !isCurrentlyChecked);
-            buttonElement.classList.toggle('text-white', !isCurrentlyChecked);
-            buttonElement.classList.toggle('bg-gray-200', isCurrentlyChecked);
-        }
-        const checkedPallets = [...(currentTforData.checkedPallets || [])];
-        const index = checkedPallets.indexOf(palletNum);
-        if (index > -1) checkedPallets.splice(index, 1);
-        else checkedPallets.push(palletNum);
-        currentTforData.checkedPallets = checkedPallets; 
-        const transferDocRef = doc(db, "transfers", currentTforData.id);
-        const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
-        const checkLog = currentTforData.checkLog || [];
-        checkLog.push({ pallet: palletNum, user: currentUserProfile.firstName, timestamp: new Date().toISOString() });
-        try {
-            await updateDoc(transferDocRef, {
-                isCompleted: isNowCompleted,
-                completionDate: isNowCompleted ? new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
-                checkedPallets: checkedPallets,
-                lastCheckedByUid: currentUser.uid,
-                lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                checkLog: checkLog
-            });
-            
-            // Log the action
-            await logAction('เช็คพาเลท', {
-                transferId: currentTforData.id,
-                palletNumber: palletNum,
-                user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
-            });
-            
-            if (isNowCompleted) {
-                showNotification('เช็คสินค้าครบถ้วนแล้ว!');
+        
+        // แสดง popup เลือกพนักงาน
+        showEmployeeSelectionModal(palletNum, async (selectedEmployeeIds) => {
+            if (buttonElement) {
+                buttonElement.classList.toggle('bg-green-500', !isCurrentlyChecked);
+                buttonElement.classList.toggle('text-white', !isCurrentlyChecked);
+                buttonElement.classList.toggle('bg-gray-200', isCurrentlyChecked);
             }
-        } catch (error) {
-            console.error("Error updating pallet check status: ", error);
-            showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
-        }
+            
+            const checkedPallets = [...(currentTforData.checkedPallets || [])];
+            const index = checkedPallets.indexOf(palletNum);
+            if (index > -1) checkedPallets.splice(index, 1);
+            else checkedPallets.push(palletNum);
+            currentTforData.checkedPallets = checkedPallets; 
+            const transferDocRef = doc(db, "transfers", currentTforData.id);
+            const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
+            
+            // อัปเดตข้อมูลการเช็ค
+            try {
+                await updateDoc(transferDocRef, {
+                    isCompleted: isNowCompleted,
+                    completionDate: isNowCompleted ? new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
+                    checkedPallets: checkedPallets,
+                    lastCheckedByUid: currentUser.uid,
+                    lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                    checkLog: (currentTforData.checkLog || []).concat(
+                        selectedEmployeeIds.map(empId => {
+                            const employee = allUsers.find(u => u.id === empId);
+                            return {
+                                pallet: palletNum,
+                                user: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+                                userId: empId,
+                                timestamp: new Date().toISOString()
+                            };
+                        })
+                    )
+                });
+                
+                // ให้คะแนนแก่พนักงานทุกคนที่เข้าร่วมตรวจสอบ
+                for (const empId of selectedEmployeeIds) {
+                    // ไม่ให้คะแนนซ้ำถ้าพนักงานคนนี้เช็คพาเลทนี้ไปแล้ว
+                    const alreadyChecked = currentTforData.checkLog?.some(
+                        log => log.pallet === palletNum && log.userId === empId
+                    );
+                    
+                    if (!alreadyChecked || isCurrentlyChecked) {
+                        await addDoc(collection(db, "scores"), {
+                            userId: empId,
+                            score: 1, // 1 คะแนนต่อการเช็ค 1 พาเลท
+                            reason: 'เช็คสินค้า',
+                            notes: `เช็คพาเลทที่ ${palletNum} ของ TFOR ...${currentTforData.tforNumber}`,
+                            awardedByUid: currentUser.uid,
+                            awardedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                            timestamp: serverTimestamp()
+                        });
+                        
+                        // อัปเดตคะแนนดาวของพนักงาน
+                        const user = allUsers.find(u => u.id === empId);
+                        if (user) {
+                            const newSmallStars = (user.smallStars || 0) + 1;
+                            const newBigStars = user.bigStars || 0;
+                            
+                            // ตรวจสอบว่าควรได้ดาวใหญ่หรือไม่ (เก็บดาวเล็กครบ 10 ดวง)
+                            let finalSmallStars = newSmallStars;
+                            let finalBigStars = newBigStars;
+                            
+                            if (newSmallStars >= 10) {
+                                finalBigStars = newBigStars + Math.floor(newSmallStars / 10);
+                                finalSmallStars = newSmallStars % 10;
+                            }
+                            
+                            await updateDoc(doc(db, "users", empId), {
+                                smallStars: finalSmallStars,
+                                bigStars: finalBigStars
+                            });
+                            
+                            // อัปเดตข้อมูลในหน่วยความจำ
+                            user.smallStars = finalSmallStars;
+                            user.bigStars = finalBigStars;
+                        }
+                    }
+                }
+                
+                // Log the action
+                await logAction('เช็คพาเลท', {
+                    transferId: currentTforData.id,
+                    palletNumber: palletNum,
+                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                    employees: selectedEmployeeIds.map(id => {
+                        const emp = allUsers.find(u => u.id === id);
+                        return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
+                    }).join(', ')
+                });
+                
+                if (isNowCompleted) {
+                    showNotification('เช็คสินค้าครบถ้วนแล้ว!');
+                } else {
+                    showNotification(`บันทึกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
+                }
+            } catch (error) {
+                console.error("Error updating pallet check status: ", error);
+                showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
+            }
+        });
     }
     
     async function handlePalletReceive(palletNum, buttonElement) {
@@ -1512,42 +1723,97 @@ document.addEventListener('DOMContentLoaded', () => {
         formWrapper.querySelector('.save-transfer-issues-btn').addEventListener('click', () => saveTransferIssues(formWrapper));
     }
     
+    // MODIFIED saveTransferIssues FUNCTION
     async function saveTransferIssues(formWrapper) {
-        try {
-            const batch = writeBatch(db);
-            for (const itemForm of formWrapper.querySelectorAll('.issue-item-form')) {
-                const issueTypes = Array.from(itemForm.querySelectorAll('.issue-type-cb:checked')).map(cb => cb.value);
-                if (itemForm.querySelector('.issue-type-cb-other:checked')) {
-                    issueTypes.push(itemForm.querySelector('.issue-other-details').value || 'อื่นๆ');
+        // แสดง popup เลือกพนักงานสำหรับรายงานปัญหา
+        showIssueEmployeeSelectionModal(async (selectedEmployeeIds) => {
+            try {
+                const batch = writeBatch(db);
+                for (const itemForm of formWrapper.querySelectorAll('.issue-item-form')) {
+                    const issueTypes = Array.from(itemForm.querySelectorAll('.issue-type-cb:checked')).map(cb => cb.value);
+                    if (itemForm.querySelector('.issue-type-cb-other:checked')) {
+                        issueTypes.push(itemForm.querySelector('.issue-other-details').value || 'อื่นๆ');
+                    }
+                    const imagesForThisItem = itemForm.issueImages || [];
+                    const newIssue = {
+                        ...currentTforData,
+                        transferId: currentTforData.id,
+                        palletNumber: itemForm.querySelector('.issue-pallet-number').value,
+                        itemNumber: itemForm.querySelector('.issue-item-number').value,
+                        quantity: itemForm.querySelector('.issue-quantity').value,
+                        issueTypes: issueTypes.length > 0 ? issueTypes : ['อื่นๆ'],
+                        issueNotes: itemForm.querySelector('.issue-other-details').value,
+                        notes: itemForm.querySelector('.issue-notes').value,
+                        issueImages: imagesForThisItem,
+                        reportDate: new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
+                        reportedByUid: currentUser.uid,
+                        reportedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                        checkerUid: currentTforData.lastCheckedByUid || null,
+                        checkerName: currentTforData.lastCheckedByName || null,
+                        reportedEmployees: selectedEmployeeIds // เก็บ ID ของพนักงานที่ร่วมรายงาน
+                    };
+                    delete newIssue.id;
+                    const issueRef = doc(collection(db, "issues"));
+                    batch.set(issueRef, newIssue);
+                    
+                    // ให้คะแนนแก่พนักงานทุกคนที่เข้าร่วมรายงานปัญหา
+                    for (const empId of selectedEmployeeIds) {
+                        await addDoc(collection(db, "scores"), {
+                            userId: empId,
+                            score: 2, // 2 คะแนนต่อการรายงานปัญหา
+                            reason: 'รายงานปัญหา',
+                            notes: `รายงานปัญหาสำหรับ TFOR ...${currentTforData.tforNumber}`,
+                            awardedByUid: currentUser.uid,
+                            awardedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                            timestamp: serverTimestamp()
+                        });
+                        
+                        // อัปเดตคะแนนดาวของพนักงาน
+                        const user = allUsers.find(u => u.id === empId);
+                        if (user) {
+                            const newSmallStars = (user.smallStars || 0) + 2;
+                            const newBigStars = user.bigStars || 0;
+                            
+                            // ตรวจสอบว่าควรได้ดาวใหญ่หรือไม่ (เก็บดาวเล็กครบ 10 ดวง)
+                            let finalSmallStars = newSmallStars;
+                            let finalBigStars = newBigStars;
+                            
+                            if (newSmallStars >= 10) {
+                                finalBigStars = newBigStars + Math.floor(newSmallStars / 10);
+                                finalSmallStars = newSmallStars % 10;
+                            }
+                            
+                            await updateDoc(doc(db, "users", empId), {
+                                smallStars: finalSmallStars,
+                                bigStars: finalBigStars
+                            });
+                            
+                            // อัปเดตข้อมูลในหน่วยความจำ
+                            user.smallStars = finalSmallStars;
+                            user.bigStars = finalBigStars;
+                        }
+                    }
                 }
-                const imagesForThisItem = itemForm.issueImages || [];
-                const newIssue = {
-                    ...currentTforData,
+                await batch.commit();
+                
+                // Log the action
+                await logAction('รายงานปัญหา', {
                     transferId: currentTforData.id,
-                    palletNumber: itemForm.querySelector('.issue-pallet-number').value,
-                    itemNumber: itemForm.querySelector('.issue-item-number').value,
-                    quantity: itemForm.querySelector('.issue-quantity').value,
-                    issueTypes: issueTypes.length > 0 ? issueTypes : ['อื่นๆ'],
-                    issueNotes: itemForm.querySelector('.issue-other-details').value,
-                    notes: itemForm.querySelector('.issue-notes').value, // Add the notes field
-                    issueImages: imagesForThisItem,
-                    reportDate: new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
-                    reportedByUid: currentUser.uid,
-                    reportedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    checkerUid: currentTforData.lastCheckedByUid || null,
-                    checkerName: currentTforData.lastCheckedByName || null
-                };
-                delete newIssue.id;
-                batch.set(doc(collection(db, "issues")), newIssue);
+                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                    employees: selectedEmployeeIds.map(id => {
+                        const emp = allUsers.find(u => u.id === id);
+                        return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
+                    }).join(', ')
+                });
+                
+                showNotification(`บันทึกปัญหาสำหรับ TFOR ...${currentTforData.tforNumber} เรียบร้อยแล้ว!`);
+                formWrapper.remove();
+                document.querySelectorAll('.issue-pallet-button').forEach(btn => btn.classList.remove('active'));
+            } catch (error) {
+                console.error("Error saving issue: ", error);
+                showNotification('เกิดข้อผิดพลาดในการบันทึกปัญหา', false);
             }
-            await batch.commit();
-            showNotification(`บันทึกปัญหาสำหรับ TFOR ...${currentTforData.tforNumber} เรียบร้อยแล้ว!`);
-            formWrapper.remove();
-            document.querySelectorAll('.issue-pallet-button').forEach(btn => btn.classList.remove('active'));
-        } catch (error) {
-            console.error("Error saving issue: ", error);
-            showNotification('เกิดข้อผิดพลาดในการบันทึกปัญหา', false);
-        }
+        });
     }
     
     function renderCompletedView(filter = '') {
@@ -2149,7 +2415,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="space-y-3 mb-4">
                             <div class="flex items-center text-sm text-gray-600">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                                 <span>ทะเบียนรถ: ${data.licensePlate}</span>
                             </div>
@@ -2186,7 +2452,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="text-purple-600 font-medium">รับแล้ว: ${receivedCount}</span>
                             </div>
                             <button class="action-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                 </svg>
                                 ไปรับสินค้า
