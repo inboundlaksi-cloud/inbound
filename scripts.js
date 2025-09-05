@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 // Firestore Database
 import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
@@ -12,12 +13,15 @@ const firebaseConfig = {
     messagingSenderId: "1080446836155",
     appId: "1:1080446836155:web:da8d3f12f76d83b408389e"
 };
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
+
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     const payload = {
@@ -80,6 +84,7 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
+
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -232,6 +237,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (role === 'Viewer') {
             document.querySelectorAll('.edit-button').forEach(el => el.style.display = 'none');
         }
+        
+        // Hide KPI view for non-Supervisor roles
+        if (role !== 'Admin' && role !== 'Supervisor') {
+            const kpiElements = document.querySelectorAll('[data-permission="canViewKpi"]');
+            kpiElements.forEach(el => el.style.display = 'none');
+        }
     }
     
     onAuthStateChanged(auth, async (user) => {
@@ -343,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (views.kpi && views.kpi.style.display === 'block') renderKpiView();
         }, (error) => console.error("Users listener error:", error));
         
-        // ส่วนของ scores และ starPoints ยังคงเป็นเงื่อนไขเดิม (เฉพาะ Admin และ Supervisor)
+        // FIXED: เพิ่มเงื่อนไขสำหรับ scores และ starPoints
         const userRole = currentUserProfile?.role;
         if (userRole === 'Admin' || userRole === 'Supervisor') {
             const scoresQuery = query(collection(db, "scores"));
@@ -802,7 +813,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <!-- รายชื่อพนักงานจะถูกเพิ่มที่นี่ -->
                     </div>
                 </div>
-                <div class="flex justify-end gap-4">
+                <div class="flex justify-between gap-4">
                     <button id="cancel-employee-selection" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">ยกเลิก</button>
                     <button id="confirm-employee-selection" class="px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700">ยืนยัน</button>
                 </div>
@@ -840,6 +851,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // จัดการการกดปุ่ม
         modal.querySelector('#cancel-employee-selection').addEventListener('click', () => {
             document.body.removeChild(modal);
+            // เรียก callback ด้วยค่า null เพื่อบอกว่าผู้ใช้ยกเลิก
+            callback(null);
         });
         
         modal.querySelector('#confirm-employee-selection').addEventListener('click', () => {
@@ -859,6 +872,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 document.body.removeChild(modal);
+                // เรียก callback ด้วยค่า null เพื่อบอกว่าผู้ใช้ยกเลิก
+                callback(null);
             }
         });
     }
@@ -889,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <!-- รายชื่อพนักงานจะถูกเพิ่มที่นี่ -->
                     </div>
                 </div>
-                <div class="flex justify-end gap-4">
+                <div class="flex justify-between gap-4">
                     <button id="cancel-issue-employee-selection" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">ยกเลิก</button>
                     <button id="confirm-issue-employee-selection" class="px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700">ยืนยัน</button>
                 </div>
@@ -927,6 +942,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // จัดการการกดปุ่ม
         modal.querySelector('#cancel-issue-employee-selection').addEventListener('click', () => {
             document.body.removeChild(modal);
+            // เรียก callback ด้วยค่า null เพื่อบอกว่าผู้ใช้ยกเลิก
+            callback(null);
         });
         
         modal.querySelector('#confirm-issue-employee-selection').addEventListener('click', () => {
@@ -946,6 +963,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 document.body.removeChild(modal);
+                // เรียก callback ด้วยค่า null เพื่อบอกว่าผู้ใช้ยกเลิก
+                callback(null);
             }
         });
     }
@@ -956,6 +975,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // แสดง popup เลือกพนักงาน
         showEmployeeSelectionModal(palletNum, async (selectedEmployeeIds) => {
+            // ตรวจสอบว่าผู้ใช้กดยกเลิกหรือไม่
+            if (!selectedEmployeeIds) {
+                return; // ออกจากฟังก์ชันโดยไม่ทำอะไรเพิ่มเติม
+            }
+            
             if (buttonElement) {
                 buttonElement.classList.toggle('bg-green-500', !isCurrentlyChecked);
                 buttonElement.classList.toggle('text-white', !isCurrentlyChecked);
@@ -1754,6 +1778,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function saveTransferIssues(formWrapper) {
         // แสดง popup เลือกพนักงานสำหรับรายงานปัญหา
         showIssueEmployeeSelectionModal(async (selectedEmployeeIds) => {
+            // ตรวจสอบว่าผู้ใช้กดยกเลิกหรือไม่
+            if (!selectedEmployeeIds) {
+                return; // ออกจากฟังก์ชันโดยไม่ทำอะไรเพิ่มเติม
+            }
+            
             try {
                 const batch = writeBatch(db);
                 for (const itemForm of formWrapper.querySelectorAll('.issue-item-form')) {
@@ -3107,6 +3136,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- KPI View Logic ---
     function renderKpiView() {
+        // FIXED: เพิ่มการตรวจสอบสิทธิก่อนแสดงหน้า KPI
+        const userRole = currentUserProfile?.role || 'Officer';
+        if (userRole !== 'Admin' && userRole !== 'Supervisor') {
+            showNotification('คุณไม่มีสิทธิ์ในการเข้าถึงหน้า KPI', false);
+            showMainView(views.mainMenu);
+            return;
+        }
+        
         const summaryContainer = document.getElementById('kpi-summary-container');
         const detailsContainer = document.getElementById('kpi-details-container');
         summaryContainer.innerHTML = '';
@@ -3282,6 +3319,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderKpiDetails(user) {
+        // FIXED: เพิ่มการตรวจสอบสิทธิก่อนแสดงรายละเอียด KPI
+        const userRole = currentUserProfile?.role || 'Officer';
+        if (userRole !== 'Admin' && userRole !== 'Supervisor') {
+            showNotification('คุณไม่มีสิทธิ์ในการดูข้อมูล KPI รายละเอียด', false);
+            return;
+        }
+        
         const container = document.getElementById('kpi-details-container');
         container.dataset.userId = user.id;
         const userScores = allScores.filter(s => s.userId === user.id).sort((a, b) => getMillis(b.timestamp) - getMillis(a.timestamp));
@@ -3310,65 +3354,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 const stars = '★'.repeat(Math.abs(score.score));
                 
                 return `
-                <div class="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                    <div>
-                        <p class="font-semibold">${score.reason} <span class="${starColor}">${stars}</span></p>
-                        <p class="text-xs text-gray-500">โดย: ${score.awardedByName} - ${scoreDate}</p>
-                        ${score.notes ? `<p class="text-sm text-gray-600 italic mt-1">"${score.notes}"</p>` : ''}
-                    </div>
-                    <div class="admin-supervisor-only">
-                        <button class="delete-score-btn text-red-400 hover:text-red-600" data-score-id="${score.id}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    </div>
+            <div class="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                <div>
+                    <p class="font-semibold">${score.reason} <span class="${starColor}">${stars}</span></p>
+                    <p class="text-xs text-gray-500">โดย: ${score.awardedByName} - ${scoreDate}</p>
+                    ${score.notes ? `<p class="text-sm text-gray-600 italic mt-1">"${score.notes}"</p>` : ''}
                 </div>
-                `}).join('');
-        }
-        container.innerHTML = `
-            <button id="back-to-kpi-summary" class="mb-6 px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">← กลับไปที่สรุป</button>
-            <div class="flex flex-col sm:flex-row items-center justify-between mb-6">
-                <div class="flex items-center space-x-4">
-                    <img src="${profilePic}" alt="Profile" class="w-24 h-24 rounded-full object-cover shadow-md">
-                    <div>
-                        <h2 class="text-2xl font-bold">${user.firstName} ${user.lastName}</h2>
-                        <p class="text-lg font-bold">
-                            <span class="text-amber-500">คะแนนรวม: ${totalStars} ★</span>
-                            ${blackStarsCount > 0 ? `<span class="text-red-500 ml-2">(หัก ${blackStarsCount} ★)</span>` : ''}
-                        </p>
-                    </div>
-                </div>
-                <div class="admin-supervisor-only mt-4 sm:mt-0 flex gap-2">
-                    <button id="add-score-btn" data-user-id="${user.id}" class="px-4 py-2 bg-fuchsia-600 text-white rounded-lg shadow hover:bg-fuchsia-700">ให้คะแนนพิเศษ</button>
-                    <button id="add-star-points-btn" data-user-id="${user.id}" class="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg shadow hover:bg-yellow-200">
-                        <span class="small-star">★</span> ให้คะแนนดาว
+                <div class="admin-supervisor-only">
+                    <button class="delete-score-btn text-red-400 hover:text-red-600" data-score-id="${score.id}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            `}).join('');
+        }
+        }
+        container.innerHTML = `
+        <button id="back-to-kpi-summary" class="mb-6 px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">← กลับไปที่สรุป</button>
+        <div class="flex flex-col sm:flex-row items-center justify-between mb-6">
+            <div class="flex items-center space-x-4">
+                <img src="${profilePic}" alt="Profile" class="w-24 h-24 rounded-full object-cover shadow-md">
                 <div>
-                     <h3 class="text-xl font-semibold mb-4">ประวัติคะแนน</h3>
-                     <div class="space-y-3 max-h-60 overflow-y-auto">${scoreHistoryHtml}</div>
-                </div>
-                <div>
-                    <h3 class="text-xl font-semibold mb-4">กราฟสรุปผลงาน</h3>
-                    <div class="relative h-60"><canvas id="kpi-user-chart"></canvas></div>
+                    <h2 class="text-2xl font-bold">${user.firstName} ${user.lastName}</h2>
+                    <p class="text-lg font-bold">
+                        <span class="text-amber-500">คะแนนรวม: ${totalStars} ★</span>
+                        ${blackStarsCount > 0 ? `<span class="text-red-500 ml-2">(หัก ${blackStarsCount} ★)</span>` : ''}
+                    </p>
                 </div>
             </div>
-            <div class="mt-6 bg-gray-50 p-4 rounded-lg">
-                <h3 class="text-lg font-semibold mb-2">รายละเอียดคะแนน KPI</h3>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><p class="text-sm text-gray-600">สร้าง TFOR</p><p class="text-xl font-bold">${createdCount} คะแนน</p></div>
-                    <div><p class="text-sm text-gray-600">เช็คสินค้า</p><p class="text-xl font-bold">${checkedCount} คะแนน</p></div>
-                    <div><p class="text-sm text-gray-600">พบปัญหา</p><p class="text-xl font-bold">${foundIssuesCount} คะแนน</p></div>
-                    <div><p class="text-sm text-gray-600">รายงานปัญหา</p><p class="text-xl font-bold">${reportedIssuesCount} คะแนน</p></div>
-                    <div><p class="text-sm text-gray-600">รับสินค้า</p><p class="text-xl font-bold">${receivedCount} คะแนน</p></div>
-                    <div><p class="text-sm text-gray-600">คะแนนพิเศษ</p><p class="text-xl font-bold">${totalStars} คะแนน</p></div>
-                </div>
-                <div class="mt-4 text-center">
-                    <p class="text-2xl font-bold text-purple-600">คะแนนรวม: ${performanceScore}</p>
-                </div>
+            <div class="admin-supervisor-only mt-4 sm:mt-0 flex gap-2">
+                <button id="add-score-btn" data-user-id="${user.id}" class="px-4 py-2 bg-fuchsia-600 text-white rounded-lg shadow hover:bg-fuchsia-700">ให้คะแนนพิเศษ</button>
+                <button id="add-star-points-btn" data-user-id="${user.id}" class="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg shadow hover:bg-yellow-200">
+                    <span class="small-star">★</span> ให้คะแนนดาว
+                </button>
             </div>
-        `;
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                 <h3 class="text-xl font-semibold mb-4">ประวัติคะแนน</h3>
+                 <div class="space-y-3 max-h-60 overflow-y-auto">${scoreHistoryHtml}</div>
+            </div>
+            <div>
+                <h3 class="text-xl font-semibold mb-4">กราฟสรุปผลงาน</h3>
+                <div class="relative h-60"><canvas id="kpi-user-chart"></canvas></div>
+            </div>
+        </div>
+        <div class="mt-6 bg-gray-50 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">รายละเอียดคะแนน KPI</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div><p class="text-sm text-gray-600">สร้าง TFOR</p><p class="text-xl font-bold">${createdCount} คะแนน</p></div>
+                <div><p class="text-sm text-gray-600">เช็คสินค้า</p><p class="text-xl font-bold">${checkedCount} คะแนน</p></div>
+                <div><p class="text-sm text-gray-600">พบปัญหา</p><p class="text-xl font-bold">${foundIssuesCount} คะแนน</p></div>
+                <div><p class="text-sm text-gray-600">รายงานปัญหา</p><p class="text-xl font-bold">${reportedIssuesCount} คะแนน</p></div>
+                <div><p class="text-sm text-gray-600">รับสินค้า</p><p class="text-xl font-bold">${receivedCount} คะแนน</p></div>
+                <div><p class="text-sm text-gray-600">คะแนนพิเศษ</p><p class="text-xl font-bold">${totalStars} คะแนน</p></div>
+            </div>
+            <div class="mt-4 text-center">
+                <p class="text-2xl font-bold text-purple-600">คะแนนรวม: ${performanceScore}</p>
+            </div>
+        </div>
+    `;
         container.classList.remove('hidden');
         const kpiCtx = document.getElementById('kpi-user-chart').getContext('2d');
         currentChartInstances.kpiChart = new Chart(kpiCtx, {
