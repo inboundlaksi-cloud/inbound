@@ -3,7 +3,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 // Firestore Database
 import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
 // Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
@@ -13,15 +12,12 @@ const firebaseConfig = {
     messagingSenderId: "1080446836155",
     appId: "1:1080446836155:web:da8d3f12f76d83b408389e"
 };
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
-
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     const payload = {
@@ -84,7 +80,6 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
-
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -205,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Enhanced updateUIForRoles function
     function updateUIForRoles() {
         if (!currentUserProfile) return;
         const role = currentUserProfile.role || 'Officer';
@@ -217,40 +211,26 @@ document.addEventListener('DOMContentLoaded', () => {
             'Viewer': []
         };
         
-        // Hide all elements with data-permission first
-        document.querySelectorAll('[data-permission]').forEach(el => {
-            el.style.display = 'none';
-            el.classList.remove('block', 'inline-block', 'flex', 'inline-flex');
-        });
+        // Hide all role-based elements first
+        document.querySelectorAll('[data-permission]').forEach(el => el.style.display = 'none');
         
-        // Show elements based on user's role
+        // Show elements based on the current user's role
         if (roles[role]) {
             roles[role].forEach(permission => {
                 document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
-                    // Set appropriate display value based on element type
-                    if (el.tagName === 'BUTTON' || el.classList.contains('btn')) {
-                        el.style.display = 'inline-block';
-                    } else if (el.classList.contains('flex') || el.classList.contains('inline-flex')) {
-                        el.style.display = 'flex';
-                    } else {
-                        el.style.display = 'block';
-                    }
+                    el.style.display = 'block'; // Or 'inline-block', 'flex' etc. as needed
                 });
             });
         }
         
-        // Special handling for delete permissions
+        // Handle delete permissions specifically for senior and viewer roles
         if (role === 'Senior' || role === 'Viewer') {
-            document.querySelectorAll('.delete-permission').forEach(el => {
-                el.style.display = 'none';
-            });
+            document.querySelectorAll('.delete-permission').forEach(el => el.style.display = 'none');
         }
         
-        // Hide all edit buttons for Viewer role
+        // For Viewer role, hide all edit buttons
         if (role === 'Viewer') {
-            document.querySelectorAll('.edit-button').forEach(el => {
-                el.style.display = 'none';
-            });
+            document.querySelectorAll('.edit-button').forEach(el => el.style.display = 'none');
         }
     }
     
@@ -454,30 +434,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAdvancedStatistics();
         showMainView(views.statistics);
     });
-    
-    // New function to check KPI access
-    function checkKpiAccess() {
-        if (!currentUserProfile) return false;
-        
-        const userRole = currentUserProfile.role || 'Officer';
-        const hasKpiAccess = userRole === 'Admin' || userRole === 'Supervisor' || userRole === 'Senior';
-        
-        if (!hasKpiAccess) {
-            showNotification('คุณไม่มีสิทธิ์เข้าถึงหน้า KPI กรุณาติดต่อผู้ดูแล้ว', false);
-            return false;
-        }
-        
-        return true;
-    }
-    
-    // Updated KPI button event listener
     document.getElementById('go-to-kpi').addEventListener('click', () => {
-        if (checkKpiAccess()) {
-            renderKpiView();
-            showMainView(views.kpi);
-        }
+        renderKpiView();
+        showMainView(views.kpi);
     });
-    
     document.getElementById('profile-button').addEventListener('click', () => {
         renderProfileView();
         showMainView(views.profile);
@@ -1004,75 +964,32 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const checkedPallets = [...(currentTforData.checkedPallets || [])];
             const index = checkedPallets.indexOf(palletNum);
+            if (index > -1) checkedPallets.splice(index, 1);
+            else checkedPallets.push(palletNum);
+            currentTforData.checkedPallets = checkedPallets; 
+            const transferDocRef = doc(db, "transfers", currentTforData.id);
+            const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
             
-            // ถ้ายกเลิกการเช็ค (เช็คอยู่แล้ว)
-            if (index > -1) {
-                checkedPallets.splice(index, 1);
-                
-                // ลบคะแนนที่เคยได้รับจากการเช็คพาเลทนี้
-                try {
-                    const scoresSnapshot = await getDocs(query(
-                        collection(db, "scores"),
-                        where("userId", "in", selectedEmployeeIds),
-                        where("reason", "==", "เช็คสินค้า")
-                    ));
-                    
-                    const batch = writeBatch(db);
-                    scoresSnapshot.forEach(doc => {
-                        const scoreData = doc.data();
-                        // ตรวจสอบว่าเป็นคะแนนจากพาเลทนี้จริงๆ
-                        if (scoreData.notes && scoreData.notes.includes(`พาเลทที่ ${palletNum}`)) {
-                            batch.delete(doc.ref);
-                            
-                            // ลบคะแนนดาวของพนักงานด้วย
-                            const user = allUsers.find(u => u.id === scoreData.userId);
-                            if (user) {
-                                const newSmallStars = Math.max(0, (user.smallStars || 0) - 1);
-                                const newBigStars = user.bigStars || 0;
-                                
-                                // ตรวจสอบว่าควรลบดาวใหญ่หรือไม่
-                                let finalSmallStars = newSmallStars;
-                                let finalBigStars = newBigStars;
-                                
-                                if (newSmallStars < 0) {
-                                    finalBigStars = Math.max(0, newBigStars - 1);
-                                    finalSmallStars = 9; // ยืมดาวเล็กมา 1 ดวง
-                                }
-                                
-                                batch.update(doc(db, "users", scoreData.userId), {
-                                    smallStars: finalSmallStars,
-                                    bigStars: finalBigStars
-                                });
-                                
-                                // อัปเดตข้อมูลในหน่วยความจำ
-                                user.smallStars = finalSmallStars;
-                                user.bigStars = finalBigStars;
-                            }
-                        }
-                    });
-                    
-                    await batch.commit();
-                    
-                    // Log the action
-                    await logAction('ยกเลิกการเช็คพาเลท', {
-                        transferId: currentTforData.id,
-                        palletNumber: palletNum,
-                        user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                        employees: selectedEmployeeIds.map(id => {
-                            const emp = allUsers.find(u => u.id === id);
-                            return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
-                        }).join(', ')
-                    });
-                    
-                    showNotification(`ยกเลิกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
-                } catch (error) {
-                    console.error("Error cancelling pallet check: ", error);
-                    showNotification('เกิดข้อผิดพลาดในการยกเลิกการเช็ค', false);
-                }
-            } 
-            // ถ้าทำการเช็ค (ยังไม่ได้เช็ค)
-            else {
-                checkedPallets.push(palletNum);
+            // อัปเดตข้อมูลการเช็ค
+            try {
+                await updateDoc(transferDocRef, {
+                    isCompleted: isNowCompleted,
+                    completionDate: isNowCompleted ? new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
+                    checkedPallets: checkedPallets,
+                    lastCheckedByUid: currentUser.uid,
+                    lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                    checkLog: (currentTforData.checkLog || []).concat(
+                        selectedEmployeeIds.map(empId => {
+                            const employee = allUsers.find(u => u.id === empId);
+                            return {
+                                pallet: palletNum,
+                                user: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+                                userId: empId,
+                                timestamp: new Date().toISOString()
+                            };
+                        })
+                    )
+                });
                 
                 // ให้คะแนนแก่พนักงานทุกคนที่เข้าร่วมตรวจสอบ
                 for (const empId of selectedEmployeeIds) {
@@ -1081,7 +998,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         log => log.pallet === palletNum && log.userId === empId
                     );
                     
-                    if (!alreadyChecked) {
+                    if (!alreadyChecked || isCurrentlyChecked) {
                         await addDoc(collection(db, "scores"), {
                             userId: empId,
                             score: 1, // 1 คะแนนต่อการเช็ค 1 พาเลท
@@ -1130,127 +1047,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     }).join(', ')
                 });
                 
-                showNotification(`บันทึกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
-            }
-            
-            currentTforData.checkedPallets = checkedPallets; 
-            const transferDocRef = doc(db, "transfers", currentTforData.id);
-            const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
-            
-            // อัปเดตข้อมูลการเช็ค
-            try {
-                await updateDoc(transferDocRef, {
-                    isCompleted: isNowCompleted,
-                    completionDate: isNowCompleted ? new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
-                    checkedPallets: checkedPallets,
-                    lastCheckedByUid: currentUser.uid,
-                    lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    checkLog: (currentTforData.checkLog || []).concat(
-                        selectedEmployeeIds.map(empId => {
-                            const employee = allUsers.find(u => u.id === empId);
-                            return {
-                                pallet: palletNum,
-                                user: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
-                                userId: empId,
-                                timestamp: new Date().toISOString()
-                            };
-                        })
-                    )
-                });
-                
                 if (isNowCompleted) {
                     showNotification('เช็คสินค้าครบถ้วนแล้ว!');
+                } else {
+                    showNotification(`บันทึกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
                 }
             } catch (error) {
                 console.error("Error updating pallet check status: ", error);
                 showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
-            }
-        });
-    }
-    
-    // เพิ่มฟังก์ชันสำหรับยกเลิกการเช็คทั้งหมด
-    async function handleCancelAllChecks() {
-        if (!currentTforData.checkedPallets || currentTforData.checkedPallets.length === 0) {
-            showNotification('ไม่มีรายการที่ต้องยกเลิกการเช็ค', false);
-            return;
-        }
-        
-        showConfirmationModal("คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการเช็คทั้งหมด?", async () => {
-            try {
-                // ดึงข้อมูลคะแนนที่เกี่ยวข้องกับการเช็คพาเลททั้งหมด
-                const scoresSnapshot = await getDocs(query(
-                    collection(db, "scores"),
-                    where("reason", "==", "เช็คสินค้า"),
-                    where("notes", ">=", `เช็คพาเลทที่ ${Math.min(...currentTforData.palletNumbers)}`),
-                    where("notes", "<=", `เช็คพาเลทที่ ${Math.max(...currentTforData.palletNumbers)}`)
-                ));
-                
-                const batch = writeBatch(db);
-                
-                // ลบคะแนนที่เกี่ยวข้องทั้งหมด
-                scoresSnapshot.forEach(doc => {
-                    const scoreData = doc.data();
-                    batch.delete(doc.ref);
-                    
-                    // ลบคะแนนดาวของพนักงานด้วย
-                    const user = allUsers.find(u => u.id === scoreData.userId);
-                    if (user) {
-                        const newSmallStars = Math.max(0, (user.smallStars || 0) - 1);
-                        const newBigStars = user.bigStars || 0;
-                        
-                        // ตรวจสอบว่าควรลบดาวใหญ่หรือไม่
-                        let finalSmallStars = newSmallStars;
-                        let finalBigStars = newBigStars;
-                        
-                        if (newSmallStars < 0) {
-                            finalBigStars = Math.max(0, newBigStars - 1);
-                            finalSmallStars = 9; // ยืมดาวเล็กมา 1 ดวง
-                        }
-                        
-                        batch.update(doc(db, "users", scoreData.userId), {
-                            smallStars: finalSmallStars,
-                            bigStars: finalBigStars
-                        });
-                        
-                        // อัปเดตข้อมูลในหน่วยความจำ
-                        user.smallStars = finalSmallStars;
-                        user.bigStars = finalBigStars;
-                    }
-                });
-                
-                // อัปเดตข้อมูลการเช็คใน transfer
-                const transferDocRef = doc(db, "transfers", currentTforData.id);
-                batch.update(transferDocRef, {
-                    isCompleted: false,
-                    completionDate: null,
-                    checkedPallets: [],
-                    lastCheckedByUid: null,
-                    lastCheckedByName: null
-                });
-                
-                await batch.commit();
-                
-                // อัปเดตข้อมูลในหน่วยความจำ
-                currentTforData.checkedPallets = [];
-                currentTforData.isCompleted = false;
-                currentTforData.completionDate = null;
-                
-                // อัปเดต UI
-                document.querySelectorAll('.pallet-check-button').forEach(btn => {
-                    btn.classList.remove('bg-green-500', 'text-white');
-                    btn.classList.add('bg-gray-200');
-                });
-                
-                // Log the action
-                await logAction('ยกเลิกการเช็คทั้งหมด', {
-                    transferId: currentTforData.id,
-                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
-                });
-                
-                showNotification('ยกเลิกการเช็คทั้งหมดสำเร็จ');
-            } catch (error) {
-                console.error("Error cancelling all checks: ", error);
-                showNotification('เกิดข้อผิดพลาดในการยกเลิกการเช็ค', false);
             }
         });
     }
@@ -1855,15 +1659,6 @@ document.addEventListener('DOMContentLoaded', () => {
             receiveBtn.addEventListener('click', (e) => handlePalletReceive(palletNum, e.currentTarget));
             receivePalletButtonsContainer.appendChild(receiveBtn);
         });
-        
-        // เพิ่มปุ่มยกเลิกการเช็คทั้งหมด
-        if (currentTforData.checkedPallets && currentTforData.checkedPallets.length > 0) {
-            const cancelAllBtn = document.createElement('button');
-            cancelAllBtn.className = 'mt-4 px-6 py-3 bg-red-600 text-white rounded-lg font-semibold shadow-lg hover:bg-red-700';
-            cancelAllBtn.textContent = 'ยกเลิกการเช็คทั้งหมด';
-            cancelAllBtn.addEventListener('click', handleCancelAllChecks);
-            palletButtonsContainer.appendChild(cancelAllBtn);
-        }
         
         // เพิ่มปุ่มรับสินค้าทั้งหมด
         if (currentTforData.checkedPallets && currentTforData.checkedPallets.length > 0) {
@@ -2736,7 +2531,7 @@ document.addEventListener('DOMContentLoaded', () => {
             container.innerHTML = `
                 <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
                     <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
                     <h3 class="text-xl font-bold text-gray-700 mb-2">ไม่มีงานวางแผนสำหรับวันนี้</h3>
                     <p class="text-gray-500">คุณสามารถวางแผนงานได้ที่หน้าปฏิทิน</p>
@@ -3311,49 +3106,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // --- KPI View Logic ---
-    // Enhanced renderKpiView function
     function renderKpiView() {
         const summaryContainer = document.getElementById('kpi-summary-container');
         const detailsContainer = document.getElementById('kpi-details-container');
-        const userManagementContainer = document.getElementById('user-management-container');
-        
-        // Check if required elements exist
-        if (!summaryContainer || !detailsContainer || !userManagementContainer) {
-            console.error("KPI view containers not found");
-            showNotification('ไม่สามารถโหลดหน้า KPI ได้ กรุณารีเฟรชหน้าเว็บ', false);
-            return;
-        }
-        
-        // Check if user has appropriate role
-        const userRole = currentUserProfile?.role || 'Officer';
-        const hasKpiAccess = userRole === 'Admin' || userRole === 'Supervisor' || userRole === 'Senior';
-        
-        if (!hasKpiAccess) {
-            summaryContainer.innerHTML = `
-                <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
-                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <h3 class="text-xl font-bold text-gray-700 mb-2">ไม่มีสิทธิ์เข้าถึง</h3>
-                    <p class="text-gray-500">คุณไม่มีสิทธิ์เข้าถึงหน้า KPI กรุณาติดต่อผู้ดูแล้ว</p>
-                </div>
-            `;
-            return;
-        }
-        
         summaryContainer.innerHTML = '';
         detailsContainer.classList.add('hidden');
         const allIssues = Object.values(issuesData).flat();
         
-        // Filter out Admin users and display only users with roles below Admin
-        const filteredUsers = allUsers.filter(user => user.role !== 'Admin');
-        
-        if (filteredUsers.length === 0) {
-            summaryContainer.innerHTML = '<p class="text-gray-500 text-center">ไม่พบข้อมูลผู้ใช้</p>';
-            return;
-        }
-        
-        filteredUsers.forEach(user => {
+        allUsers.forEach(user => {
+            if (user.role === 'Admin') return; // Don't show admin in KPI list
             const createdCount = [...allTransfersData, ...completedTransfersData].filter(t => t.createdByUid === user.id).length;
             const checkedCount = completedTransfersData.filter(t => t.lastCheckedByUid === user.id).length;
             const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
@@ -3366,18 +3127,16 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const userScores = allScores.filter(s => s.userId === user.id);
             const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
-            const blackStarsCount = userScores.filter(s => s.score < 0).reduce((sum, s) => sum + Math.abs(s.score), 0);
             const profilePic = user.profilePictureUrl || 'https://placehold.co/80x80/e0e0e0/757575?text=?';
             
             // KPI Calculation: Checked + Created + Found Issues + Reported Issues + Received + Stars
             const kpiScore = checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
             const scoreColor = kpiScore > 10 ? 'text-green-500' : kpiScore > 0 ? 'text-blue-500' : 'text-red-500';
-            
             const card = document.createElement('div');
             card.className = 'bg-white p-6 rounded-2xl shadow-lg cursor-pointer hover:shadow-xl transition-shadow';
             card.innerHTML = `
                 <div class="flex items-center space-x-4">
-                    <img src="${profilePic}" alt="Profile" class="w-16 h-16 rounded-full object-cover shadow-md">
+                    <img src="${profilePic}" alt="Profile" class="w-16 h-16 rounded-full object-cover">
                     <div>
                         <h3 class="text-xl font-bold text-gray-800">${user.firstName} ${user.lastName}</h3>
                         <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
@@ -3404,95 +3163,56 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                 </div>
             `;
-            
-            // Add event listener for clicking on the card
-            card.addEventListener('click', () => {
-                currentTforData = null; // Reset current transfer data
-                renderKpiDetails(user);
-            });
-            
+            card.addEventListener('click', () => renderKpiDetails(user));
             summaryContainer.appendChild(card);
         });
-        
-        // Call renderUserManagement after displaying all users
         renderUserManagement();
         
-        // Add event listeners for star points buttons
+        // Add event listeners to star points buttons
         document.querySelectorAll('.give-star-points-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const userId = e.target.dataset.userId;
-                if (userId) {
-                    showStarPointsModal(userId);
-                }
+                showStarPointsModal(e.target.dataset.userId);
             });
         });
-        
-        // Call updateUIForRoles again to ensure UI is correct
-        updateUIForRoles();
     }
     
-    // Enhanced renderUserManagement function
     function renderUserManagement() {
         const container = document.getElementById('user-list-container');
-        if (!container) {
-            console.error("User management container not found");
-            return;
-        }
-        
         container.innerHTML = '';
         const table = document.createElement('table');
         table.className = 'min-w-full bg-white';
         table.innerHTML = `
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อ-นามสกุล</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">อีเมล</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ตำแหน่ง</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase admin-only">จัดการ</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200"></tbody>
-        `;
+            <thead class="bg-gray-50"><tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อ-นามสกุล</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">อีเมล</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ตำแหน่ง</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase admin-only">จัดการ</th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-200"></tbody>`;
         const tbody = table.querySelector('tbody');
-        
-        // Filter out Admin users
-        const filteredUsers = allUsers.filter(user => user.role !== 'Admin');
-        
-        if (filteredUsers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">ไม่พบข้อมูลผู้ใช้</td></tr>';
-        } else {
-            filteredUsers.forEach(user => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <img src="${user.profilePictureUrl || 'https://placehold.co/40x40/e0e0e0/757575?text=?'}" alt="${user.firstName}" class="w-10 h-10 rounded-full mr-3">
-                            <span>${user.firstName} ${user.lastName}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">${user.email}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <select class="role-select rounded-md border-gray-300 shadow-sm focus:ring-fuchsia-500 focus:border-fuchsia-500" data-uid="${user.id}">
-                            <option value="Supervisor" ${user.role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
-                            <option value="Senior" ${user.role === 'Senior' ? 'selected' : ''}>Senior</option>
-                            <option value="Officer" ${!user.role || user.role === 'Officer' ? 'selected' : ''}>Officer</option>
-                            <option value="Viewer" ${user.role === 'Viewer' ? 'selected' : ''}>Viewer</option>
-                        </select>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap admin-only">
-                        <button class="delete-user-btn text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50" data-uid="${user.uid}" data-email="${user.email}" title="ลบผู้ใช้">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
+        allUsers.forEach(user => {
+            if (user.role === 'Admin') return;
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap">${user.firstName} ${user.lastName}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${user.email}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <select class="role-select rounded-md border-gray-300" data-uid="${user.id}">
+                        <option value="Supervisor" ${user.role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
+                        <option value="Senior" ${user.role === 'Senior' ? 'selected' : ''}>Senior</option>
+                        <option value="Officer" ${!user.role || user.role === 'Officer' ? 'selected' : ''}>Officer</option>
+                        <option value="Viewer" ${user.role === 'Viewer' ? 'selected' : ''}>Viewer</option>
+                    </select>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap admin-only">
+                    <button class="delete-user-btn text-red-500 hover:text-red-700" data-uid="${user.uid}" data-email="${user.email}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </td>
+            </tr>
             `;
-            tbody.appendChild(row);
         });
-        }
-        
         container.appendChild(table);
         
         // Add event listeners for role selection
@@ -3503,11 +3223,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await updateDoc(doc(db, "users", uid), { role: newRole });
                     showNotification('อัปเดตตำแหน่งสำเร็จ');
-                    // Refresh the view to show updated roles
-                    renderKpiView();
                 } catch (error) {
                     showNotification('เกิดข้อผิดพลาด', false);
-                    console.error("Error updating role:", error);
                 }
             });
         });
@@ -3515,15 +3232,39 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add event listeners for delete buttons
         document.querySelectorAll('.delete-user-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent row click
-                const uid = e.currentTarget.closest('button').dataset.uid;
-                const email = e.currentTarget.closest('button').dataset.email;
+                const uid = e.currentTarget.dataset.uid;
+                const email = e.currentTarget.dataset.email;
                 showDeleteUserConfirmation(uid, email);
             });
         });
         
         // Update UI for roles
         updateUIForRoles();
+    }
+    
+    function showDeleteUserConfirmation(uid, email) {
+        showConfirmationModal(
+            `คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้งาน "${email}"? การกระทำนี้ไม่สามารถกู้คืนได้`,
+            () => deleteUser(uid)
+        );
+    }
+    
+    async function deleteUser(uid) {
+        try {
+            // Delete the user document from Firestore
+            await deleteDoc(doc(db, "users", uid));
+            
+            // Remove the user from the local allUsers array
+            allUsers = allUsers.filter(user => user.id !== uid);
+            
+            // Re-render the KPI view to update the user list
+            renderKpiView();
+            
+            showNotification("ลบผู้ใช้งานสำเร็จ");
+        } catch (error) {
+            console.error("Error deleting user:", error);
+            showNotification("เกิดข้อผิดพลาดในการลบผู้ใช้งาน", false);
+        }
     }
     
     function getMillis(timestamp) {
@@ -3545,6 +3286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         container.dataset.userId = user.id;
         const userScores = allScores.filter(s => s.userId === user.id).sort((a, b) => getMillis(b.timestamp) - getMillis(a.timestamp));
         const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
+        const blackStarsCount = userScores.filter(s => s.score < 0).reduce((sum, s) => sum + Math.abs(s.score), 0);
         const profilePic = user.profilePictureUrl || 'https://placehold.co/128x128/e0e0e0/757575?text=?';
         const allUserTransfers = [...allTransfersData, ...completedTransfersData];
         const createdCount = allUserTransfers.filter(t => t.createdByUid === user.id).length;
@@ -3580,8 +3322,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </button>
                     </div>
                 </div>
-                `;
-            }).join('');
+                `}).join('');
         }
         container.innerHTML = `
             <button id="back-to-kpi-summary" class="mb-6 px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">← กลับไปที่สรุป</button>
@@ -4197,7 +3938,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             batch.set(doc(db, "starPoints", id), itemData);
                         });
                         await batch.commit();
-                        
                         showNotification("กู้คืนข้อมูลสำเร็จ!");
                         backupModal.classList.add('hidden');
                         backupModal.classList.remove('flex');
