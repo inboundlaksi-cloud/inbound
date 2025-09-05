@@ -336,14 +336,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (views.profile && views.profile.style.display === 'block') renderRecentActivity();
         }, (error) => console.error("Issues listener error:", error));
         
+        // FIXED: ดึงข้อมูลผู้ใช้สำหรับทุกบทบาท
+        const usersQuery = query(collection(db, "users"));
+        unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
+            allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (views.kpi && views.kpi.style.display === 'block') renderKpiView();
+        }, (error) => console.error("Users listener error:", error));
+        
+        // ส่วนของ scores และ starPoints ยังคงเป็นเงื่อนไขเดิม (เฉพาะ Admin และ Supervisor)
         const userRole = currentUserProfile?.role;
         if (userRole === 'Admin' || userRole === 'Supervisor') {
-            const usersQuery = query(collection(db, "users"));
-            unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
-                allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (views.kpi && views.kpi.style.display === 'block') renderKpiView();
-            });
-            
             const scoresQuery = query(collection(db, "scores"));
             unsubscribeScores = onSnapshot(scoresQuery, (snapshot) => {
                 allScores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -355,13 +357,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 if (views.profile && views.profile.style.display === 'block') renderProfileView();
-            });
+            }, (error) => console.error("Scores listener error:", error));
             
             const starPointsQuery = query(collection(db, "starPoints"));
             unsubscribeStarPoints = onSnapshot(starPointsQuery, (snapshot) => {
                 allStarPoints = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 if (views.profile && views.profile.style.display === 'block') renderProfileStarPoints();
-            });
+            }, (error) => console.error("StarPoints listener error:", error));
         }
     }
     
@@ -774,8 +776,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // NEW MODAL FUNCTIONS FOR EMPLOYEE SELECTION
+    // FIXED: เพิ่มการตรวจสอบความพร้อมของข้อมูลผู้ใช้ก่อนแสดง modal
     async function showEmployeeSelectionModal(palletNum, callback) {
+        // ตรวจสอบว่ามีข้อมูลผู้ใช้หรือไม่ ถ้าไม่มีให้ดึงข้อมูลก่อน
+        if (allUsers.length === 0) {
+            try {
+                const usersSnapshot = await getDocs(collection(db, "users"));
+                allUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            } catch (error) {
+                console.error("Error fetching users:", error);
+                showNotification('ไม่สามารถดึงข้อมูลผู้ใช้ได้', false);
+                return;
+            }
+        }
+        
         // สร้าง modal element
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
@@ -848,8 +862,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
+    
+    // FIXED: เพิ่มการตรวจสอบความพร้อมของข้อมูลผู้ใช้ก่อนแสดง modal
     async function showIssueEmployeeSelectionModal(callback) {
+        // ตรวจสอบว่ามีข้อมูลผู้ใช้หรือไม่ ถ้าไม่มีให้ดึงข้อมูลก่อน
+        if (allUsers.length === 0) {
+            try {
+                const usersSnapshot = await getDocs(collection(db, "users"));
+                allUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            } catch (error) {
+                console.error("Error fetching users:", error);
+                showNotification('ไม่สามารถดึงข้อมูลผู้ใช้ได้', false);
+                return;
+            }
+        }
+        
         // สร้าง modal element
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
