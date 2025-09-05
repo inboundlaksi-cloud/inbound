@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 // Firestore Database
 import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
@@ -12,12 +13,15 @@ const firebaseConfig = {
     messagingSenderId: "1080446836155",
     appId: "1:1080446836155:web:da8d3f12f76d83b408389e"
 };
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
+
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     const payload = {
@@ -80,6 +84,7 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
+
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -130,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const profilePicPreview = document.getElementById('profile-pic-preview');
     const defaultAvatarContainer = document.getElementById('default-avatar-container');
     const backupModal = document.getElementById('backup-modal');
+    
     let currentChartInstances = {};
     let isAdmin = false;
     let currentUser = null;
@@ -268,6 +274,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 await setDoc(userDocRef, { bigStars: 0 }, { merge: true });
             }
             
+            // Fetch all users data
+            const usersQuery = query(collection(db, "users"));
+            const usersSnapshot = await getDocs(usersQuery);
+            allUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
             updateUserDisplays(currentUserProfile);
             updateUIForRoles();
             setupFirestoreListeners();
@@ -291,6 +302,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupFirestoreListeners() {
         if (!currentUser) return;
         detachFirestoreListeners();
+        
+        // Listen for transfers data
         const transfersQuery = query(collection(db, "transfers"));
         unsubscribeTransfers = onSnapshot(transfersQuery, (snapshot) => {
             const allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -319,6 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (views.profile && views.profile.style.display === 'block') renderRecentActivity();
         }, (error) => console.error("Transfers listener error:", error));
         
+        // Listen for issues data
         const issuesQuery = query(collection(db, "issues"));
         unsubscribeIssues = onSnapshot(issuesQuery, (snapshot) => {
             const newIssuesData = {};
@@ -336,14 +350,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (views.profile && views.profile.style.display === 'block') renderRecentActivity();
         }, (error) => console.error("Issues listener error:", error));
         
+        // Listen for all users data (FIXED: Removed role condition)
+        const usersQuery = query(collection(db, "users"));
+        unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
+            allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // Update views that depend on user data
+            if (views.kpi && views.kpi.style.display === 'block') renderKpiView();
+            if (views.profile && views.profile.style.display === 'block') renderProfileView();
+        }, (error) => console.error("Users listener error:", error));
+        
+        // Listen for scores and star points only for Admin and Supervisor
         const userRole = currentUserProfile?.role;
         if (userRole === 'Admin' || userRole === 'Supervisor') {
-            const usersQuery = query(collection(db, "users"));
-            unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
-                allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (views.kpi && views.kpi.style.display === 'block') renderKpiView();
-            });
-            
             const scoresQuery = query(collection(db, "scores"));
             unsubscribeScores = onSnapshot(scoresQuery, (snapshot) => {
                 allScores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -774,7 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // NEW MODAL FUNCTIONS FOR EMPLOYEE SELECTION
+    // MODAL FUNCTIONS FOR EMPLOYEE SELECTION (FIXED)
     async function showEmployeeSelectionModal(palletNum, callback) {
         // สร้าง modal element
         const modal = document.createElement('div');
@@ -799,29 +818,35 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // ดึงข้อมูลพนักงานทั้งหมดจากฐานข้อมูล
         const employeeList = modal.querySelector('#employee-list');
-        allUsers.forEach(user => {
-            // ไม่แสดง Admin ในรายการ
-            if (user.role === 'Admin') return;
-            
-            const employeeItem = document.createElement('div');
-            employeeItem.className = 'flex items-center p-2 hover:bg-gray-100 rounded-lg';
-            employeeItem.innerHTML = `
-                <input type="checkbox" id="emp-${user.id}" class="employee-checkbox mr-3" value="${user.id}">
-                <label for="emp-${user.id}" class="flex items-center cursor-pointer flex-grow">
-                    <img src="${user.profilePictureUrl || 'https://placehold.co/40x40/e0e0e0/757575?text=?'}" alt="${user.firstName}" class="w-10 h-10 rounded-full mr-3">
-                    <div>
-                        <p class="font-medium">${user.firstName} ${user.lastName}</p>
-                        <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
-                    </div>
-                </label>
-            `;
-            employeeList.appendChild(employeeItem);
-            
-            // เลือกผู้ใช้ปัจจุบันโดยค่าเริ่มต้น
-            if (user.id === currentUser.uid) {
-                employeeItem.querySelector('input').checked = true;
-            }
-        });
+        
+        // ตรวจสอบว่ามีข้อมูลผู้ใช้หรือไม่
+        if (!allUsers || allUsers.length === 0) {
+            employeeList.innerHTML = '<p class="text-gray-500 text-center p-4">ไม่พบข้อมูลพนักงาน</p>';
+        } else {
+            allUsers.forEach(user => {
+                // ไม่แสดง Admin ในรายการ
+                if (user.role === 'Admin') return;
+                
+                const employeeItem = document.createElement('div');
+                employeeItem.className = 'flex items-center p-2 hover:bg-gray-100 rounded-lg';
+                employeeItem.innerHTML = `
+                    <input type="checkbox" id="emp-${user.id}" class="employee-checkbox mr-3" value="${user.id}">
+                    <label for="emp-${user.id}" class="flex items-center cursor-pointer flex-grow">
+                        <img src="${user.profilePictureUrl || 'https://placehold.co/40x40/e0e0e0/757575?text=?'}" alt="${user.firstName}" class="w-10 h-10 rounded-full mr-3">
+                        <div>
+                            <p class="font-medium">${user.firstName} ${user.lastName}</p>
+                            <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
+                        </div>
+                    </label>
+                `;
+                employeeList.appendChild(employeeItem);
+                
+                // เลือกผู้ใช้ปัจจุบันโดยค่าเริ่มต้น
+                if (user.id === currentUser.uid) {
+                    employeeItem.querySelector('input').checked = true;
+                }
+            });
+        }
         
         // จัดการการกดปุ่ม
         modal.querySelector('#cancel-employee-selection').addEventListener('click', () => {
@@ -848,7 +873,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
+    
     async function showIssueEmployeeSelectionModal(callback) {
         // สร้าง modal element
         const modal = document.createElement('div');
@@ -873,29 +898,35 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // ดึงข้อมูลพนักงานทั้งหมดจากฐานข้อมูล
         const employeeList = modal.querySelector('#issue-employee-list');
-        allUsers.forEach(user => {
-            // ไม่แสดง Admin ในรายการ
-            if (user.role === 'Admin') return;
-            
-            const employeeItem = document.createElement('div');
-            employeeItem.className = 'flex items-center p-2 hover:bg-gray-100 rounded-lg';
-            employeeItem.innerHTML = `
-                <input type="checkbox" id="issue-emp-${user.id}" class="issue-employee-checkbox mr-3" value="${user.id}">
-                <label for="issue-emp-${user.id}" class="flex items-center cursor-pointer flex-grow">
-                    <img src="${user.profilePictureUrl || 'https://placehold.co/40x40/e0e0e0/757575?text=?'}" alt="${user.firstName}" class="w-10 h-10 rounded-full mr-3">
-                    <div>
-                        <p class="font-medium">${user.firstName} ${user.lastName}</p>
-                        <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
-                    </div>
-                </label>
-            `;
-            employeeList.appendChild(employeeItem);
-            
-            // เลือกผู้ใช้ปัจจุบันโดยค่าเริ่มต้น
-            if (user.id === currentUser.uid) {
-                employeeItem.querySelector('input').checked = true;
-            }
-        });
+        
+        // ตรวจสอบว่ามีข้อมูลผู้ใช้หรือไม่
+        if (!allUsers || allUsers.length === 0) {
+            employeeList.innerHTML = '<p class="text-gray-500 text-center p-4">ไม่พบข้อมูลพนักงาน</p>';
+        } else {
+            allUsers.forEach(user => {
+                // ไม่แสดง Admin ในรายการ
+                if (user.role === 'Admin') return;
+                
+                const employeeItem = document.createElement('div');
+                employeeItem.className = 'flex items-center p-2 hover:bg-gray-100 rounded-lg';
+                employeeItem.innerHTML = `
+                    <input type="checkbox" id="issue-emp-${user.id}" class="issue-employee-checkbox mr-3" value="${user.id}">
+                    <label for="issue-emp-${user.id}" class="flex items-center cursor-pointer flex-grow">
+                        <img src="${user.profilePictureUrl || 'https://placehold.co/40x40/e0e0e0/757575?text=?'}" alt="${user.firstName}" class="w-10 h-10 rounded-full mr-3">
+                        <div>
+                            <p class="font-medium">${user.firstName} ${user.lastName}</p>
+                            <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
+                        </div>
+                    </label>
+                `;
+                employeeList.appendChild(employeeItem);
+                
+                // เลือกผู้ใช้ปัจจุบันโดยค่าเริ่มต้น
+                if (user.id === currentUser.uid) {
+                    employeeItem.querySelector('input').checked = true;
+                }
+            });
+        }
         
         // จัดการการกดปุ่ม
         modal.querySelector('#cancel-issue-employee-selection').addEventListener('click', () => {
@@ -3296,6 +3327,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 `}).join('');
+            });
         }
         container.innerHTML = `
             <button id="back-to-kpi-summary" class="mb-6 px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">← กลับไปที่สรุป</button>
