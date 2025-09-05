@@ -964,32 +964,75 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const checkedPallets = [...(currentTforData.checkedPallets || [])];
             const index = checkedPallets.indexOf(palletNum);
-            if (index > -1) checkedPallets.splice(index, 1);
-            else checkedPallets.push(palletNum);
-            currentTforData.checkedPallets = checkedPallets; 
-            const transferDocRef = doc(db, "transfers", currentTforData.id);
-            const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
             
-            // อัปเดตข้อมูลการเช็ค
-            try {
-                await updateDoc(transferDocRef, {
-                    isCompleted: isNowCompleted,
-                    completionDate: isNowCompleted ? new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
-                    checkedPallets: checkedPallets,
-                    lastCheckedByUid: currentUser.uid,
-                    lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    checkLog: (currentTforData.checkLog || []).concat(
-                        selectedEmployeeIds.map(empId => {
-                            const employee = allUsers.find(u => u.id === empId);
-                            return {
-                                pallet: palletNum,
-                                user: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
-                                userId: empId,
-                                timestamp: new Date().toISOString()
-                            };
-                        })
-                    )
-                });
+            // ถ้ายกเลิกการเช็ค (เช็คอยู่แล้ว)
+            if (index > -1) {
+                checkedPallets.splice(index, 1);
+                
+                // ลบคะแนนที่เคยได้รับจากการเช็คพาเลทนี้
+                try {
+                    const scoresSnapshot = await getDocs(query(
+                        collection(db, "scores"),
+                        where("userId", "in", selectedEmployeeIds),
+                        where("reason", "==", "เช็คสินค้า")
+                    ));
+                    
+                    const batch = writeBatch(db);
+                    scoresSnapshot.forEach(doc => {
+                        const scoreData = doc.data();
+                        // ตรวจสอบว่าเป็นคะแนนจากพาเลทนี้จริงๆ
+                        if (scoreData.notes && scoreData.notes.includes(`พาเลทที่ ${palletNum}`)) {
+                            batch.delete(doc.ref);
+                            
+                            // ลบคะแนนดาวของพนักงานด้วย
+                            const user = allUsers.find(u => u.id === scoreData.userId);
+                            if (user) {
+                                const newSmallStars = Math.max(0, (user.smallStars || 0) - 1);
+                                const newBigStars = user.bigStars || 0;
+                                
+                                // ตรวจสอบว่าควรลบดาวใหญ่หรือไม่
+                                let finalSmallStars = newSmallStars;
+                                let finalBigStars = newBigStars;
+                                
+                                if (newSmallStars < 0) {
+                                    finalBigStars = Math.max(0, newBigStars - 1);
+                                    finalSmallStars = 9; // ยืมดาวเล็กมา 1 ดวง
+                                }
+                                
+                                batch.update(doc(db, "users", scoreData.userId), {
+                                    smallStars: finalSmallStars,
+                                    bigStars: finalBigStars
+                                });
+                                
+                                // อัปเดตข้อมูลในหน่วยความจำ
+                                user.smallStars = finalSmallStars;
+                                user.bigStars = finalBigStars;
+                            }
+                        }
+                    });
+                    
+                    await batch.commit();
+                    
+                    // Log the action
+                    await logAction('ยกเลิกการเช็คพาเลท', {
+                        transferId: currentTforData.id,
+                        palletNumber: palletNum,
+                        user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                        employees: selectedEmployeeIds.map(id => {
+                            const emp = allUsers.find(u => u.id === id);
+                            return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
+                        }).join(', ')
+                    });
+                    
+                    showNotification(`ยกเลิกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
+                } catch (error) {
+                    console.error("Error cancelling pallet check: ", error);
+                    showNotification('เกิดข้อผิดพลาดในการยกเลิกการเช็ค', false);
+                }
+            } 
+            // ถ้าทำการเช็ค (ยังไม่ได้เช็ค)
+            else {
+                checkedPallets.push(palletNum);
                 
                 // ให้คะแนนแก่พนักงานทุกคนที่เข้าร่วมตรวจสอบ
                 for (const empId of selectedEmployeeIds) {
@@ -998,7 +1041,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         log => log.pallet === palletNum && log.userId === empId
                     );
                     
-                    if (!alreadyChecked || isCurrentlyChecked) {
+                    if (!alreadyChecked) {
                         await addDoc(collection(db, "scores"), {
                             userId: empId,
                             score: 1, // 1 คะแนนต่อการเช็ค 1 พาเลท
@@ -1047,14 +1090,127 @@ document.addEventListener('DOMContentLoaded', () => {
                     }).join(', ')
                 });
                 
+                showNotification(`บันทึกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
+            }
+            
+            currentTforData.checkedPallets = checkedPallets; 
+            const transferDocRef = doc(db, "transfers", currentTforData.id);
+            const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
+            
+            // อัปเดตข้อมูลการเช็ค
+            try {
+                await updateDoc(transferDocRef, {
+                    isCompleted: isNowCompleted,
+                    completionDate: isNowCompleted ? new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
+                    checkedPallets: checkedPallets,
+                    lastCheckedByUid: currentUser.uid,
+                    lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                    checkLog: (currentTforData.checkLog || []).concat(
+                        selectedEmployeeIds.map(empId => {
+                            const employee = allUsers.find(u => u.id === empId);
+                            return {
+                                pallet: palletNum,
+                                user: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+                                userId: empId,
+                                timestamp: new Date().toISOString()
+                            };
+                        })
+                    )
+                });
+                
                 if (isNowCompleted) {
                     showNotification('เช็คสินค้าครบถ้วนแล้ว!');
-                } else {
-                    showNotification(`บันทึกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
                 }
             } catch (error) {
                 console.error("Error updating pallet check status: ", error);
                 showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
+            }
+        });
+    }
+    
+    // เพิ่มฟังก์ชันสำหรับยกเลิกการเช็คทั้งหมด
+    async function handleCancelAllChecks() {
+        if (!currentTforData.checkedPallets || currentTforData.checkedPallets.length === 0) {
+            showNotification('ไม่มีรายการที่ต้องยกเลิกการเช็ค', false);
+            return;
+        }
+        
+        showConfirmationModal("คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการเช็คทั้งหมด?", async () => {
+            try {
+                // ดึงข้อมูลคะแนนที่เกี่ยวข้องกับการเช็คพาเลททั้งหมด
+                const scoresSnapshot = await getDocs(query(
+                    collection(db, "scores"),
+                    where("reason", "==", "เช็คสินค้า"),
+                    where("notes", ">=", `เช็คพาเลทที่ ${Math.min(...currentTforData.palletNumbers)}`),
+                    where("notes", "<=", `เช็คพาเลทที่ ${Math.max(...currentTforData.palletNumbers)}`)
+                ));
+                
+                const batch = writeBatch(db);
+                
+                // ลบคะแนนที่เกี่ยวข้องทั้งหมด
+                scoresSnapshot.forEach(doc => {
+                    const scoreData = doc.data();
+                    batch.delete(doc.ref);
+                    
+                    // ลบคะแนนดาวของพนักงานด้วย
+                    const user = allUsers.find(u => u.id === scoreData.userId);
+                    if (user) {
+                        const newSmallStars = Math.max(0, (user.smallStars || 0) - 1);
+                        const newBigStars = user.bigStars || 0;
+                        
+                        // ตรวจสอบว่าควรลบดาวใหญ่หรือไม่
+                        let finalSmallStars = newSmallStars;
+                        let finalBigStars = newBigStars;
+                        
+                        if (newSmallStars < 0) {
+                            finalBigStars = Math.max(0, newBigStars - 1);
+                            finalSmallStars = 9; // ยืมดาวเล็กมา 1 ดวง
+                        }
+                        
+                        batch.update(doc(db, "users", scoreData.userId), {
+                            smallStars: finalSmallStars,
+                            bigStars: finalBigStars
+                        });
+                        
+                        // อัปเดตข้อมูลในหน่วยความจำ
+                        user.smallStars = finalSmallStars;
+                        user.bigStars = finalBigStars;
+                    }
+                });
+                
+                // อัปเดตข้อมูลการเช็คใน transfer
+                const transferDocRef = doc(db, "transfers", currentTforData.id);
+                batch.update(transferDocRef, {
+                    isCompleted: false,
+                    completionDate: null,
+                    checkedPallets: [],
+                    lastCheckedByUid: null,
+                    lastCheckedByName: null
+                });
+                
+                await batch.commit();
+                
+                // อัปเดตข้อมูลในหน่วยความจำ
+                currentTforData.checkedPallets = [];
+                currentTforData.isCompleted = false;
+                currentTforData.completionDate = null;
+                
+                // อัปเดต UI
+                document.querySelectorAll('.pallet-check-button').forEach(btn => {
+                    btn.classList.remove('bg-green-500', 'text-white');
+                    btn.classList.add('bg-gray-200');
+                });
+                
+                // Log the action
+                await logAction('ยกเลิกการเช็คทั้งหมด', {
+                    transferId: currentTforData.id,
+                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
+                });
+                
+                showNotification('ยกเลิกการเช็คทั้งหมดสำเร็จ');
+            } catch (error) {
+                console.error("Error cancelling all checks: ", error);
+                showNotification('เกิดข้อผิดพลาดในการยกเลิกการเช็ค', false);
             }
         });
     }
@@ -1659,6 +1815,15 @@ document.addEventListener('DOMContentLoaded', () => {
             receiveBtn.addEventListener('click', (e) => handlePalletReceive(palletNum, e.currentTarget));
             receivePalletButtonsContainer.appendChild(receiveBtn);
         });
+        
+        // เพิ่มปุ่มยกเลิกการเช็คทั้งหมด
+        if (currentTforData.checkedPallets && currentTforData.checkedPallets.length > 0) {
+            const cancelAllBtn = document.createElement('button');
+            cancelAllBtn.className = 'mt-4 px-6 py-3 bg-red-600 text-white rounded-lg font-semibold shadow-lg hover:bg-red-700';
+            cancelAllBtn.textContent = 'ยกเลิกการเช็คทั้งหมด';
+            cancelAllBtn.addEventListener('click', handleCancelAllChecks);
+            palletButtonsContainer.appendChild(cancelAllBtn);
+        }
         
         // เพิ่มปุ่มรับสินค้าทั้งหมด
         if (currentTforData.checkedPallets && currentTforData.checkedPallets.length > 0) {
@@ -3136,10 +3301,13 @@ document.addEventListener('DOMContentLoaded', () => {
             card.className = 'bg-white p-6 rounded-2xl shadow-lg cursor-pointer hover:shadow-xl transition-shadow';
             card.innerHTML = `
                 <div class="flex items-center space-x-4">
-                    <img src="${profilePic}" alt="Profile" class="w-16 h-16 rounded-full object-cover">
+                    <img src="${profilePic}" alt="Profile" class="w-16 h-16 rounded-full object-cover shadow-md">
                     <div>
                         <h3 class="text-xl font-bold text-gray-800">${user.firstName} ${user.lastName}</h3>
-                        <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
+                        <p class="text-lg font-bold">
+                            <span class="text-amber-500">คะแนนรวม: ${totalStars} ★</span>
+                            ${blackStarsCount > 0 ? `<span class="text-red-500 ml-2">(หัก ${blackStarsCount} ★)</span>` : ''}
+                        </p>
                     </div>
                 </div>
                 <div class="mt-4 flex justify-between items-center">
@@ -3286,7 +3454,6 @@ document.addEventListener('DOMContentLoaded', () => {
         container.dataset.userId = user.id;
         const userScores = allScores.filter(s => s.userId === user.id).sort((a, b) => getMillis(b.timestamp) - getMillis(a.timestamp));
         const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
-        const blackStarsCount = userScores.filter(s => s.score < 0).reduce((sum, s) => sum + Math.abs(s.score), 0);
         const profilePic = user.profilePictureUrl || 'https://placehold.co/128x128/e0e0e0/757575?text=?';
         const allUserTransfers = [...allTransfersData, ...completedTransfersData];
         const createdCount = allUserTransfers.filter(t => t.createdByUid === user.id).length;
@@ -3938,6 +4105,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             batch.set(doc(db, "starPoints", id), itemData);
                         });
                         await batch.commit();
+                        
                         showNotification("กู้คืนข้อมูลสำเร็จ!");
                         backupModal.classList.add('hidden');
                         backupModal.classList.remove('flex');
@@ -3971,4 +4139,4 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error logging action:", error);
         }
     }
-});
+});    
