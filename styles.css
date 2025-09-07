@@ -422,7 +422,6 @@ tr:hover {
 #comments-display::-webkit-scrollbar-thumb:hover {
     background: #aaa;
 }
-
 /* สไตล์สำหรับหน้ารอรับสินค้า */
 .product-card {
     border-left: 4px solid #3b82f6;
@@ -543,4 +542,42 @@ tr:hover {
 .status-separator {
     margin: 0 0.5rem;
     color: #9ca3af;
+}
+
+/* ในไฟล์ CSS - เพิ่มส่วนนี้ */
+.cursor-not-allowed {
+    cursor: not-allowed !important;
+}
+.opacity-50 {
+    opacity: 0.5 !important;
+}
+
+/* สำหรับแสดงสถานะของผู้ใช้ */
+.user-role-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.role-officer {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+.role-senior {
+    background-color: #dcfce7;
+    color: #166534;
+}
+.role-supervisor {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+.role-viewer {
+    background-color: #e0e7ff;
+    color: #3730a3;
+}
+.role-admin {
+    background-color: #fee2e2;
+    color: #991b1b;
 }
