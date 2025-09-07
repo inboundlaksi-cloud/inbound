@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 // Firestore Database
 import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
@@ -12,12 +13,15 @@ const firebaseConfig = {
     messagingSenderId: "1080446836155",
     appId: "1:1080446836155:web:da8d3f12f76d83b408389e"
 };
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
+
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     
@@ -82,6 +86,7 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
+
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -170,8 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ],
         'Viewer': [
             'viewer-only', 
-            'supervisor-only', 
-            'senior-only', 
             'canViewKpi', 
             'canPlanWork', 
             'canComment'
@@ -253,7 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const permissions = ROLE_PERMISSIONS[role] || [];
         
         // ซ่อนทุกองค์ประกอบที่มี data-permission ก่อน
-        document.querySelectorAll('[data-permission]').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('[data-permission]').forEach(el => {
+            el.style.display = 'none';
+        });
         
         // แสดงองค์ประกอบตามสิทธิ์ของผู้ใช้
         permissions.forEach(permission => {
@@ -272,7 +277,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // สำหรับ Officer ให้ซ่อนปุ่มลบและปุ่มแก้ไขบางปุ่ม
         if (role === 'Officer') {
-            document.querySelectorAll('.delete-permission').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.delete-permission').forEach(el => {
+                el.style.display = 'none';
+            });
         }
     }
     
