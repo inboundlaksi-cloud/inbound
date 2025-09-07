@@ -80,7 +80,6 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
-
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -529,250 +528,13 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo(0, 0);
     }
     
-    // โค้ดใหม่ 1: เพิ่ม event listener สำหรับปุ่มสร้างฟอร์มด่วน
-    document.getElementById('quick-form-card')?.addEventListener('click', () => {
-        // ไปที่หน้า Transfers
-        showMainView(views.transfers);
-        
-        // เรียกใช้ฟังก์ชันเพื่อแสดงหน้าฟอร์มโดยตรง
-        setTimeout(() => {
-            initializeForm();
-            showSubView(formView);
-        }, 100);
-    });
-    
-    // โค้ดใหม่ 2: ฟังก์ชัน initializeForm
     function initializeForm() {
-        // รีเซ็ตฟอร์ม
         inboundForm.reset();
         document.getElementById('delivery-date').value = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
         document.getElementById('image-preview').innerHTML = '';
         uploadedImagesBase64 = [];
         document.getElementById('tfor-container').innerHTML = '';
-        
-        // เพิ่ม TFOR block แรกโดยอัตโนมัติ
         addTforBlock();
-        
-        // โฟกัสที่ช่องแรกที่ผู้ใช้ควรกรอก
-        setTimeout(() => {
-            document.getElementById('lp-front')?.focus();
-        }, 200);
-    }
-    
-    // โค้ดใหม่ 3: เพิ่ม animation effect เมื่อคลิกปุ่ม
-    document.getElementById('quick-form-card')?.addEventListener('click', function() {
-        // เพิ่ม effect การกด
-        this.style.transform = 'scale(0.95)';
-        
-        setTimeout(() => {
-            this.style.transform = '';
-            
-            // ไปที่หน้า Transfers
-            showMainView(views.transfers);
-            
-            // เรียกใช้ฟังก์ชันเพื่อแสดงหน้าฟอร์มโดยตรง
-            setTimeout(() => {
-                initializeForm();
-                showSubView(formView);
-            }, 100);
-        }, 150);
-    });
-    
-    // โค้ดใหม่ 4: เพิ่มฟังก์ชันสำหรับยกเลิกการเช็คพาเลท
-    async function handleCancelPalletCheck(palletNum, buttonElement) {
-        // แสดง popup เลือกพนักงานสำหรับยกเลิกการเช็ค
-        showEmployeeSelectionModal(palletNum, async (selectedEmployeeIds) => {
-            if (buttonElement) {
-                buttonElement.classList.toggle('bg-green-500', false);
-                buttonElement.classList.toggle('text-white', false);
-                buttonElement.classList.toggle('bg-gray-200', true);
-            }
-            
-            const checkedPallets = [...(currentTforData.checkedPallets || [])];
-            const index = checkedPallets.indexOf(palletNum);
-            if (index > -1) checkedPallets.splice(index, 1);
-            currentTforData.checkedPallets = checkedPallets; 
-            const transferDocRef = doc(db, "transfers", currentTforData.id);
-            
-            try {
-                await updateDoc(transferDocRef, {
-                    isCompleted: false,
-                    completionDate: null,
-                    checkedPallets: checkedPallets,
-                    lastCheckedByUid: currentUser.uid,
-                    lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    cancelCheckLog: (currentTforData.cancelCheckLog || []).concat(
-                        selectedEmployeeIds.map(empId => {
-                            const employee = allUsers.find(u => u.id === empId);
-                            return {
-                                pallet: palletNum,
-                                user: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
-                                userId: empId,
-                                timestamp: new Date().toISOString()
-                            };
-                        })
-                    )
-                });
-                
-                // หักคะแนนแก่พนักงานทุกคนที่เข้าร่วมตรวจสอบเดิม
-                const originalCheckLog = currentTforData.checkLog?.filter(
-                    log => log.pallet === palletNum
-                ) || [];
-                
-                for (const logEntry of originalCheckLog) {
-                    const empId = logEntry.userId;
-                    if (empId) {
-                        // หาคะแนนที่เคยให้ไปแล้วเพื่อทำการหัก
-                        const scoresSnapshot = await getDocs(query(
-                            collection(db, "scores"),
-                            where("userId", "==", empId),
-                            where("reason", "==", "เช็คสินค้า"),
-                            where("notes", "==", `เช็คพาเลทที่ ${palletNum} ของ TFOR ...${currentTforData.tforNumber}`)
-                        ));
-                        
-                        if (!scoresSnapshot.empty) {
-                            // ลบคะแนนเดิม
-                            const scoreDoc = scoresSnapshot.docs[0];
-                            await deleteDoc(scoreDoc.ref);
-                            
-                            // อัปเดตคะแนนดาวของพนักงาน
-                            const user = allUsers.find(u => u.id === empId);
-                            if (user) {
-                                const newSmallStars = Math.max(0, (user.smallStars || 0) - 1);
-                                const newBigStars = user.bigStars || 0;
-                                
-                                await updateDoc(doc(db, "users", empId), {
-                                    smallStars: newSmallStars,
-                                    bigStars: newBigStars
-                                });
-                                
-                                // อัปเดตข้อมูลในหน่วยความจำ
-                                user.smallStars = newSmallStars;
-                                user.bigStars = newBigStars;
-                            }
-                        }
-                    }
-                }
-                
-                // Log the action
-                await logAction('ยกเลิกการเช็คพาเลท', {
-                    transferId: currentTforData.id,
-                    palletNumber: palletNum,
-                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    employees: selectedEmployeeIds.map(id => {
-                        const emp = allUsers.find(u => u.id === id);
-                        return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
-                    }).join(', ')
-                });
-                
-                showNotification(`ยกเลิกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
-            } catch (error) {
-                console.error("Error updating pallet check status: ", error);
-                showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
-            }
-        });
-    }
-    
-    // ปรับปรุงฟังก์ชัน renderCheckView เพื่อเพิ่มปุ่มยกเลิกการเช็ค
-    function renderCheckView() {
-        previousView = detailsView;
-        const detailsContainer = document.getElementById('check-details-container');
-        const palletButtonsContainer = document.getElementById('pallet-buttons-container');
-        const receivePalletButtonsContainer = document.getElementById('receive-pallet-buttons-container');
-        const issuePalletButtonsContainer = document.getElementById('issue-pallet-buttons-container');
-        const issueFormsContainer = document.getElementById('issue-forms-container');
-        
-        const arrivalDate = parseThaiDate(currentTforData.deliveryDate);
-        let dueDateString = 'N/A';
-        if (arrivalDate) {
-            const dueDate = calculateDueDate(arrivalDate);
-            dueDateString = dueDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-        }
-        const imagesHTML = (currentTforData.images && currentTforData.images.length > 0) 
-            ? `<div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">${currentTforData.images.map(img => `<a href="${img}" target="_blank"><img src="${img}" class="h-32 w-full object-cover rounded-lg shadow-md"></a>`).join('')}</div>`
-            : '<p class="text-sm text-gray-500 mt-2">ไม่มีรูปภาพ</p>';
-        detailsContainer.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                <div><p class="text-sm font-semibold text-gray-500">TFOR / ทะเบียนรถ</p><p class="text-lg font-bold">...${currentTforData.tforNumber} / ${currentTforData.licensePlate}</p></div>
-                <div><p class="text-sm font-semibold text-gray-500">สาขาต้นทาง</p><p class="text-lg font-bold">${currentTforData.branch}</p></div>
-                <div><p class="text-sm font-semibold text-gray-500">วันที่มาถึง</p><p class="text-lg font-bold">${currentTforData.deliveryDate}</p></div>
-                <div><p class="text-sm font-semibold text-red-500">ควรเช็คก่อนวันที่</p><p class="text-lg font-bold text-red-600">${dueDateString}</p></div>
-                <div class="md:col-span-2"><p class="text-sm font-semibold text-gray-500">หมายเหตุพาเลท</p><p class="text-lg font-bold">${currentTforData.palletNotes || '-'}</p></div>
-            </div>
-            <div id="linked-tfor-display" class="mt-4"></div>
-            <div class="mt-4"><p class="text-sm font-semibold text-gray-500 mb-2">รูปภาพรวม</p>${imagesHTML}</div>
-        `;
-        const linkedTforContainer = document.getElementById('linked-tfor-display');
-        if (currentTforData.linkedTfors && currentTforData.linkedTfors.length > 0) {
-            linkedTforContainer.innerHTML = `
-                <p class="text-sm font-semibold text-gray-500">TFOR ที่พ่วงมา</p>
-                <div class="flex flex-wrap gap-2 mt-2">
-                    ${currentTforData.linkedTfors.map(lt => `<span class="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">${lt}</span>`).join('')}
-                </div>
-            `;
-        } else {
-            linkedTforContainer.innerHTML = '';
-        }
-        
-        palletButtonsContainer.innerHTML = '';
-        receivePalletButtonsContainer.innerHTML = '';
-        issuePalletButtonsContainer.innerHTML = '';
-        issueFormsContainer.innerHTML = '';
-        (currentTforData.palletNumbers || []).forEach(palletNum => {
-            const checkBtn = document.createElement('button');
-            checkBtn.className = 'pallet-check-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105';
-            checkBtn.textContent = `เช็คพาเลทที่ ${palletNum}`;
-            checkBtn.dataset.palletNumber = palletNum;
-            if (currentTforData.checkedPallets?.includes(palletNum)) {
-                checkBtn.classList.add('bg-green-500', 'text-white');
-            } else {
-                checkBtn.classList.add('bg-gray-200');
-            }
-            checkBtn.addEventListener('click', (e) => handlePalletCheck(palletNum, e.currentTarget));
-            palletButtonsContainer.appendChild(checkBtn);
-            
-            // เพิ่มปุ่มยกเลิกการเช็ค
-            if (currentTforData.checkedPallets?.includes(palletNum)) {
-                const cancelCheckBtn = document.createElement('button');
-                cancelCheckBtn.className = 'cancel-pallet-check-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105 bg-red-100 text-red-700';
-                cancelCheckBtn.textContent = `ยกเลิกการเช็คพาเลทที่ ${palletNum}`;
-                cancelCheckBtn.dataset.palletNumber = palletNum;
-                cancelCheckBtn.addEventListener('click', (e) => handleCancelPalletCheck(palletNum, e.currentTarget));
-                palletButtonsContainer.appendChild(cancelCheckBtn);
-            }
-            
-            const receiveBtn = document.createElement('button');
-            receiveBtn.className = 'pallet-receive-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105';
-            receiveBtn.textContent = `รับสินค้า พาเลทที่ ${palletNum}`;
-            receiveBtn.dataset.palletNumber = palletNum;
-            if (currentTforData.receivedPallets?.includes(palletNum)) {
-                receiveBtn.classList.add('bg-purple-500', 'text-white');
-            } else {
-                receiveBtn.classList.add('bg-gray-200');
-            }
-            receiveBtn.addEventListener('click', (e) => handlePalletReceive(palletNum, e.currentTarget));
-            receivePalletButtonsContainer.appendChild(receiveBtn);
-        });
-        
-        // เพิ่มปุ่มรับสินค้าทั้งหมด
-        if (currentTforData.checkedPallets && currentTforData.checkedPallets.length > 0) {
-            const receiveAllBtn = document.createElement('button');
-            receiveAllBtn.className = 'mt-4 px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold shadow-lg hover:bg-purple-700';
-            receiveAllBtn.textContent = 'รับสินค้าทั้งหมด';
-            receiveAllBtn.addEventListener('click', () => handleReceiveAll());
-            receivePalletButtonsContainer.appendChild(receiveAllBtn);
-        }
-        
-        // แสดงเฉพาะปุ่มรายงานปัญหารวม
-        const issueBtn = document.createElement('button');
-        issueBtn.className = 'issue-transfer-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105 bg-red-100 text-red-700';
-        issueBtn.textContent = `รายงานปัญหาทั้งหมด`;
-        issueBtn.addEventListener('click', () => {
-            document.querySelectorAll('.issue-pallet-button').forEach(btn => btn.classList.remove('active'));
-            issueBtn.classList.add('active');
-            renderIssueFormForTransfer();
-        });
-        issuePalletButtonsContainer.appendChild(issueBtn);
     }
     
     document.getElementById('summary-todays-plan-card').addEventListener('click', () => {
@@ -1878,6 +1640,259 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         return date;
+    }
+    
+    function renderCheckView() {
+        previousView = detailsView;
+        const detailsContainer = document.getElementById('check-details-container');
+        const palletButtonsContainer = document.getElementById('pallet-buttons-container');
+        const receivePalletButtonsContainer = document.getElementById('receive-pallet-buttons-container');
+        const issuePalletButtonsContainer = document.getElementById('issue-pallet-buttons-container');
+        const issueFormsContainer = document.getElementById('issue-forms-container');
+        
+        const arrivalDate = parseThaiDate(currentTforData.deliveryDate);
+        let dueDateString = 'N/A';
+        if (arrivalDate) {
+            const dueDate = calculateDueDate(arrivalDate);
+            dueDateString = dueDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        const imagesHTML = (currentTforData.images && currentTforData.images.length > 0) 
+            ? `<div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">${currentTforData.images.map(img => `<a href="${img}" target="_blank"><img src="${img}" class="h-32 w-full object-cover rounded-lg shadow-md"></a>`).join('')}</div>`
+            : '<p class="text-sm text-gray-500 mt-2">ไม่มีรูปภาพ</p>';
+        detailsContainer.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div><p class="text-sm font-semibold text-gray-500">TFOR / ทะเบียนรถ</p><p class="text-lg font-bold">...${currentTforData.tforNumber} / ${currentTforData.licensePlate}</p></div>
+                <div><p class="text-sm font-semibold text-gray-500">สาขาต้นทาง</p><p class="text-lg font-bold">${currentTforData.branch}</p></div>
+                <div><p class="text-sm font-semibold text-gray-500">วันที่มาถึง</p><p class="text-lg font-bold">${currentTforData.deliveryDate}</p></div>
+                <div><p class="text-sm font-semibold text-red-500">ควรเช็คก่อนวันที่</p><p class="text-lg font-bold text-red-600">${dueDateString}</p></div>
+                <div class="md:col-span-2"><p class="text-sm font-semibold text-gray-500">หมายเหตุพาเลท</p><p class="text-lg font-bold">${currentTforData.palletNotes || '-'}</p></div>
+            </div>
+            <div id="linked-tfor-display" class="mt-4"></div>
+            <div class="mt-4"><p class="text-sm font-semibold text-gray-500 mb-2">รูปภาพรวม</p>${imagesHTML}</div>
+        `;
+        const linkedTforContainer = document.getElementById('linked-tfor-display');
+        if (currentTforData.linkedTfors && currentTforData.linkedTfors.length > 0) {
+            linkedTforContainer.innerHTML = `
+                <p class="text-sm font-semibold text-gray-500">TFOR ที่พ่วงมา</p>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    ${currentTforData.linkedTfors.map(lt => `<span class="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">${lt}</span>`).join('')}
+                </div>
+            `;
+        } else {
+            linkedTforContainer.innerHTML = '';
+        }
+        
+        palletButtonsContainer.innerHTML = '';
+        receivePalletButtonsContainer.innerHTML = '';
+        issuePalletButtonsContainer.innerHTML = '';
+        issueFormsContainer.innerHTML = '';
+        (currentTforData.palletNumbers || []).forEach(palletNum => {
+            const checkBtn = document.createElement('button');
+            checkBtn.className = 'pallet-check-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105';
+            checkBtn.textContent = `พาเลทที่ ${palletNum}`;
+            checkBtn.dataset.palletNumber = palletNum;
+            if (currentTforData.checkedPallets?.includes(palletNum)) {
+                checkBtn.classList.add('bg-green-500', 'text-white');
+            } else {
+                checkBtn.classList.add('bg-gray-200');
+            }
+            checkBtn.addEventListener('click', (e) => handlePalletCheck(palletNum, e.currentTarget));
+            palletButtonsContainer.appendChild(checkBtn);
+            
+            const receiveBtn = document.createElement('button');
+            receiveBtn.className = 'pallet-receive-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105';
+            receiveBtn.textContent = `รับสินค้า พาเลทที่ ${palletNum}`;
+            receiveBtn.dataset.palletNumber = palletNum;
+            if (currentTforData.receivedPallets?.includes(palletNum)) {
+                receiveBtn.classList.add('bg-purple-500', 'text-white');
+            } else {
+                receiveBtn.classList.add('bg-gray-200');
+            }
+            receiveBtn.addEventListener('click', (e) => handlePalletReceive(palletNum, e.currentTarget));
+            receivePalletButtonsContainer.appendChild(receiveBtn);
+        });
+        
+        // เพิ่มปุ่มรับสินค้าทั้งหมด
+        if (currentTforData.checkedPallets && currentTforData.checkedPallets.length > 0) {
+            const receiveAllBtn = document.createElement('button');
+            receiveAllBtn.className = 'mt-4 px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold shadow-lg hover:bg-purple-700';
+            receiveAllBtn.textContent = 'รับสินค้าทั้งหมด';
+            receiveAllBtn.addEventListener('click', () => handleReceiveAll());
+            receivePalletButtonsContainer.appendChild(receiveAllBtn);
+        }
+        
+        // แสดงเฉพาะปุ่มรายงานปัญหารวม
+        const issueBtn = document.createElement('button');
+        issueBtn.className = 'issue-transfer-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105 bg-red-100 text-red-700';
+        issueBtn.textContent = `รายงานปัญหาทั้งหมด`;
+        issueBtn.addEventListener('click', () => {
+            document.querySelectorAll('.issue-pallet-button').forEach(btn => btn.classList.remove('active'));
+            issueBtn.classList.add('active');
+            renderIssueFormForTransfer();
+        });
+        issuePalletButtonsContainer.appendChild(issueBtn);
+    }
+    
+    function renderIssueFormForTransfer() {
+        const issueFormsContainer = document.getElementById('issue-forms-container');
+        issueFormsContainer.innerHTML = ''; 
+        const formWrapper = document.createElement('div');
+        formWrapper.id = `issue-form-transfer-${currentTforData.id}`;
+        formWrapper.className = 'mt-6 border-t pt-6';
+        formWrapper.innerHTML = `
+            <h3 class="text-xl font-bold text-gray-800 mb-4">รายงานปัญหาสำหรับ TFOR ...${currentTforData.tforNumber}</h3>
+            <div class="issue-items-container space-y-4"></div>
+            <button type="button" class="add-issue-item-btn mt-4 px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600">+ เพิ่มรายการปัญหา</button>
+            <button type="button" class="save-transfer-issues-btn mt-4 ml-2 px-3 py-1 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600">บันทึกปัญหาทั้งหมด</button>
+        `;
+        issueFormsContainer.appendChild(formWrapper);
+        const itemsContainer = formWrapper.querySelector('.issue-items-container');
+        
+        function addIssueItem() {
+            let issueImagesBase64 = [];
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'issue-item-form bg-gray-50 p-4 rounded-lg border space-y-4 relative';
+            itemDiv.issueImages = issueImagesBase64;
+            itemDiv.innerHTML = `
+                <button type="button" class="remove-issue-item-btn absolute top-2 right-2 text-red-500 hover:text-red-700">&times;</button>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium">พาเลทที่</label>
+                        <select class="issue-pallet-number mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            ${(currentTforData.palletNumbers || []).map(p => `<option value="${p}">พาเลทที่ ${p}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div><label class="block text-sm font-medium">ITEM NUMBER</label><input type="text" class="issue-item-number mt-1 block w-full rounded-md border-gray-300 shadow-sm"></input></div>
+                    <div><label class="block text-sm font-medium">จำนวน</label><input type="number" class="issue-quantity mt-1 block w-full rounded-md border-gray-300 shadow-sm"></input></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">รูปรายละเอียดปัญหา</label>
+                    <div class="issue-drag-drop mt-1 border-2 border-dashed rounded-md p-4 text-center cursor-pointer">ลากและวางไฟล์ หรือ คลิก</div>
+                    <input type="file" class="issue-file-input hidden" multiple accept="image/*">
+                    <div class="issue-image-preview grid grid-cols-3 gap-2 mt-2"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">รายละเอียดปัญหา</label>
+                    <div class="grid grid-cols-2 gap-2 mt-1">
+                        <label class="flex items-center"><input type="checkbox" value="กล่องชำรุด" class="issue-type-cb rounded"> <span class="ml-2">กล่องชำรุด</span></label>
+                        <label class="flex items-center"><input type="checkbox" value="ไม่ติดสติกเกอร์" class="issue-type-cb rounded"> <span class="ml-2">ไม่ติดสติกเกอร์</span></label>
+                        <label class="flex items-center"><input type="checkbox" value="สินค้าขาด" class="issue-type-cb rounded"> <span class="ml-2">สินค้าขาด</span></label>
+                        <label class="flex items-center"><input type="checkbox" value="สินค้าเกิน" class="issue-type-cb rounded"> <span class="ml-2">สินค้าเกิน</span></label>
+                        <label class="flex items-center"><input type="checkbox" value="อื่นๆ" class="issue-type-cb-other rounded"> <span class="ml-2">อื่นๆ</span></label>
+                    </div>
+                    <textarea class="issue-other-details hidden mt-2 w-full rounded-md border-gray-300 shadow-sm" placeholder="ระบุรายละเอียด..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">หมายเหตุ</label>
+                    <textarea class="issue-notes mt-1 w-full rounded-md border-gray-300 shadow-sm" placeholder="ระบุหมายเหตุเพิ่มเติม..."></textarea>
+                </div>
+            `;
+            itemsContainer.appendChild(itemDiv);
+            const dnd = itemDiv.querySelector('.issue-drag-drop');
+            const fileInput = itemDiv.querySelector('.issue-file-input');
+            const preview = itemDiv.querySelector('.issue-image-preview');
+            dnd.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (e) => handleFiles(e.target.files, preview, issueImagesBase64));
+            itemDiv.querySelector('.issue-type-cb-other').addEventListener('change', (e) => {
+                itemDiv.querySelector('.issue-other-details').classList.toggle('hidden', !e.target.checked);
+            });
+            itemDiv.querySelector('.remove-issue-item-btn').addEventListener('click', () => itemDiv.remove());
+        }
+        addIssueItem();
+        formWrapper.querySelector('.add-issue-item-btn').addEventListener('click', addIssueItem);
+        formWrapper.querySelector('.save-transfer-issues-btn').addEventListener('click', () => saveTransferIssues(formWrapper));
+    }
+    
+    // MODIFIED saveTransferIssues FUNCTION
+    async function saveTransferIssues(formWrapper) {
+        // แสดง popup เลือกพนักงานสำหรับรายงานปัญหา
+        showIssueEmployeeSelectionModal(async (selectedEmployeeIds) => {
+            try {
+                const batch = writeBatch(db);
+                for (const itemForm of formWrapper.querySelectorAll('.issue-item-form')) {
+                    const issueTypes = Array.from(itemForm.querySelectorAll('.issue-type-cb:checked')).map(cb => cb.value);
+                    if (itemForm.querySelector('.issue-type-cb-other:checked')) {
+                        issueTypes.push(itemForm.querySelector('.issue-other-details').value || 'อื่นๆ');
+                    }
+                    const imagesForThisItem = itemForm.issueImages || [];
+                    const newIssue = {
+                        ...currentTforData,
+                        transferId: currentTforData.id,
+                        palletNumber: itemForm.querySelector('.issue-pallet-number').value,
+                        itemNumber: itemForm.querySelector('.issue-item-number').value,
+                        quantity: itemForm.querySelector('.issue-quantity').value,
+                        issueTypes: issueTypes.length > 0 ? issueTypes : ['อื่นๆ'],
+                        issueNotes: itemForm.querySelector('.issue-other-details').value,
+                        notes: itemForm.querySelector('.issue-notes').value,
+                        issueImages: imagesForThisItem,
+                        reportDate: new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
+                        reportedByUid: currentUser.uid,
+                        reportedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                        checkerUid: currentTforData.lastCheckedByUid || null,
+                        checkerName: currentTforData.lastCheckedByName || null,
+                        reportedEmployees: selectedEmployeeIds // เก็บ ID ของพนักงานที่ร่วมรายงาน
+                    };
+                    delete newIssue.id;
+                    const issueRef = doc(collection(db, "issues"));
+                    batch.set(issueRef, newIssue);
+                    
+                    // ให้คะแนนแก่พนักงานทุกคนที่เข้าร่วมรายงานปัญหา
+                    for (const empId of selectedEmployeeIds) {
+                        await addDoc(collection(db, "scores"), {
+                            userId: empId,
+                            score: 2, // 2 คะแนนต่อการรายงานปัญหา
+                            reason: 'รายงานปัญหา',
+                            notes: `รายงานปัญหาสำหรับ TFOR ...${currentTforData.tforNumber}`,
+                            awardedByUid: currentUser.uid,
+                            awardedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                            timestamp: serverTimestamp()
+                        });
+                        
+                        // อัปเดตคะแนนดาวของพนักงาน
+                        const user = allUsers.find(u => u.id === empId);
+                        if (user) {
+                            const newSmallStars = (user.smallStars || 0) + 2;
+                            const newBigStars = user.bigStars || 0;
+                            
+                            // ตรวจสอบว่าควรได้ดาวใหญ่หรือไม่ (เก็บดาวเล็กครบ 10 ดวง)
+                            let finalSmallStars = newSmallStars;
+                            let finalBigStars = newBigStars;
+                            
+                            if (newSmallStars >= 10) {
+                                finalBigStars = newBigStars + Math.floor(newSmallStars / 10);
+                                finalSmallStars = newSmallStars % 10;
+                            }
+                            
+                            await updateDoc(doc(db, "users", empId), {
+                                smallStars: finalSmallStars,
+                                bigStars: finalBigStars
+                            });
+                            
+                            // อัปเดตข้อมูลในหน่วยความจำ
+                            user.smallStars = finalSmallStars;
+                            user.bigStars = finalBigStars;
+                        }
+                    }
+                }
+                await batch.commit();
+                
+                // Log the action
+                await logAction('รายงานปัญหา', {
+                    transferId: currentTforData.id,
+                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                    employees: selectedEmployeeIds.map(id => {
+                        const emp = allUsers.find(u => u.id === id);
+                        return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
+                    }).join(', ')
+                });
+                
+                showNotification(`บันทึกปัญหาสำหรับ TFOR ...${currentTforData.tforNumber} เรียบร้อยแล้ว!`);
+                formWrapper.remove();
+                document.querySelectorAll('.issue-pallet-button').forEach(btn => btn.classList.remove('active'));
+            } catch (error) {
+                console.error("Error saving issue: ", error);
+                showNotification('เกิดข้อผิดพลาดในการบันทึกปัญหา', false);
+            }
+        });
     }
     
     function renderCompletedView(filter = '') {
