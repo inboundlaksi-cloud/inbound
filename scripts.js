@@ -16,11 +16,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-// Your Gemini API Key - Updated with the provided key
-const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
 
+// แก้ไข API Key สำหรับ Gemini 2.0
+const geminiApiKey = "AIzaSyCj9NWe7x0zquLX8cqIyUoOYw65Enf9OgE";
+
+// ฟังก์ชันเรียกใช้ Gemini API ที่อัปเดตแล้ว
 async function callGeminiAPI(prompt) {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
+    // ใช้โมเดล Gemini 2.0 ที่เสถียรและรองรับฟีเจอร์ใหม่
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`;
+    
     const payload = {
         contents: [{
             parts: [{
@@ -28,10 +32,11 @@ async function callGeminiAPI(prompt) {
             }]
         }],
         generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
+            temperature: 0.2,
+            topK: 20,
+            topP: 0.8,
+            maxOutputTokens: 150,
+            responseMimeType: "text/plain",
         },
         safetySettings: [
             {
@@ -78,6 +83,80 @@ async function callGeminiAPI(prompt) {
         }
     } catch (error) {
         console.error("Error calling Gemini API:", error);
+        throw error;
+    }
+}
+
+// เพิ่มฟังก์ชันสำหรับวิเคราะห์รูปภาพด้วย Gemini 2.0
+async function analyzeImageWithGemini(imageBase64, prompt = "วิเคราะห์รูปภาพนี้และบอกว่ามีอะไรบ้าง") {
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`;
+    
+    const payload = {
+        contents: [{
+            parts: [
+                {
+                    text: prompt
+                },
+                {
+                    inline_data: {
+                        mime_type: "image/jpeg",
+                        data: imageBase64
+                    }
+                }
+            ]
+        }],
+        generationConfig: {
+            temperature: 0.2,
+            topK: 20,
+            topP: 0.8,
+            maxOutputTokens: 300,
+            responseMimeType: "text/plain",
+        },
+        safetySettings: [
+            {
+                category: "HARM_CATEGORY_HARASSMENT",
+                threshold: "BLOCK_NONE"
+            },
+            {
+                category: "HARM_CATEGORY_HATE_SPEECH", 
+                threshold: "BLOCK_NONE"
+            },
+            {
+                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                threshold: "BLOCK_NONE"
+            },
+            {
+                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                threshold: "BLOCK_NONE"
+            }
+        ]
+    };
+    
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Gemini API Error:", errorData);
+            throw new Error(`API request failed with status ${response.status}: ${errorData.error?.message || 'Unknown error'}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
+            return result.candidates[0].content.parts[0].text;
+        } else {
+            console.error("Unexpected API response structure:", result);
+            return "ขออภัยค่ะ ไม่สามารถวิเคราะห์รูปภาพได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง";
+        }
+    } catch (error) {
+        console.error("Error calling Gemini API for image analysis:", error);
         throw error;
     }
 }
@@ -202,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // NEW updateUIForRoles function
+    // ฟังก์ชันอัปเดต UI ตามสิทธิ์ผู้ใช้
     function updateUIForRoles() {
         if (!currentUserProfile) return;
         const role = currentUserProfile.role || 'Officer';
@@ -381,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (views.profile && views.profile.style.display === 'block') renderRecentActivity();
         }, (error) => console.error("Issues listener error:", error));
         
-        // FIXED: ดึงข้อมูลผู้ใช้สำหรับทุกบทบาท
+        // ดึงข้อมูลผู้ใช้สำหรับทุกบทบาท
         const usersQuery = query(collection(db, "users"));
         unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
             allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -480,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showMainView(views.statistics);
     });
     
-    // NEW go-to-kpi event listener with role checking
+    // go-to-kpi event listener with role checking
     document.getElementById('go-to-kpi').addEventListener('click', () => {
         const userRole = currentUserProfile?.role || 'Officer';
         // Viewer, Admin และ Supervisor สามารถเข้าถึงหน้า KPI ได้
@@ -830,7 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // FIXED: เพิ่มการตรวจสอบความพร้อมของข้อมูลผู้ใช้ก่อนแสดง modal
+    // ฟังก์ชันแสดง modal เลือกพนักงานสำหรับการเช็คพาเลท
     async function showEmployeeSelectionModal(palletNum, callback) {
         // ตรวจสอบว่ามีข้อมูลผู้ใช้หรือไม่ ถ้าไม่มีให้ดึงข้อมูลก่อน
         if (allUsers.length === 0) {
@@ -917,7 +996,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // FIXED: เพิ่มการตรวจสอบความพร้อมของข้อมูลผู้ใช้ก่อนแสดง modal
+    // ฟังก์ชันแสดง modal เลือกพนักงานสำหรับการรายงานปัญหา
     async function showIssueEmployeeSelectionModal(callback) {
         // ตรวจสอบว่ามีข้อมูลผู้ใช้หรือไม่ ถ้าไม่มีให้ดึงข้อมูลก่อน
         if (allUsers.length === 0) {
@@ -1004,7 +1083,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // MODIFIED handlePalletCheck FUNCTION
+    // ฟังก์ชันจัดการการเช็คพาเลท
     async function handlePalletCheck(palletNum, buttonElement) {
         const isCurrentlyChecked = currentTforData.checkedPallets?.includes(palletNum);
         
@@ -1113,7 +1192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // NEW FUNCTION: ยกเลิกการเช็คพาเลท
+    // ฟังก์ชันยกเลิกการเช็คพาเลท
     async function handleCancelPalletCheck(palletNum, buttonElement) {
         // แสดง popup เลือกพนักงานสำหรับยกเลิกการเช็ค
         showEmployeeSelectionModal(palletNum, async (selectedEmployeeIds) => {
@@ -1739,7 +1818,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return date;
     }
     
-    // MODIFIED renderCheckView FUNCTION with cancel check functionality
+    // ฟังก์ชัน renderCheckView ที่แก้ไขแล้ว
     function renderCheckView() {
         previousView = detailsView;
         const detailsContainer = document.getElementById('check-details-container');
@@ -1839,6 +1918,66 @@ document.addEventListener('DOMContentLoaded', () => {
             renderIssueFormForTransfer();
         });
         issuePalletButtonsContainer.appendChild(issueBtn);
+        
+        // เพิ่มปุ่มวิเคราะห์รูปภาพด้วย AI
+        const analyzeImageBtn = document.createElement('button');
+        analyzeImageBtn.className = 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mt-4';
+        analyzeImageBtn.textContent = 'วิเคราะห์รูปภาพด้วย AI';
+        analyzeImageBtn.addEventListener('click', async () => {
+            if (!currentTforData.images || currentTforData.images.length === 0) {
+                showNotification('ไม่มีรูปภาพให้วิเคราะห์', false);
+                return;
+            }
+            
+            const loadingContainer = document.getElementById('loading-container');
+            loadingContainer.style.display = 'flex';
+            
+            try {
+                // วิเคราะห์รูปภาพแรกในรายการ
+                const analysisResult = await analyzeImageWithGemini(
+                    currentTforData.images[0].split(',')[1], // ตัดส่วน header ของ base64 ออก
+                    "วิเคราะห์รูปภาพนี้และบอกว่ามีสินค้าอะไรบ้าง มีปัญหาอะไรไหม"
+                );
+                
+                // แสดงผลการวิเคราะห์
+                const resultModal = document.createElement('div');
+                resultModal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
+                resultModal.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">ผลการวิเคราะห์รูปภาพ</h3>
+                            <button class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+                        </div>
+                        <div class="mb-4">
+                            <img src="${currentTforData.images[0]}" class="w-full h-auto rounded-lg shadow-md mb-4">
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="whitespace-pre-line">${analysisResult}</p>
+                        </div>
+                        <div class="mt-6 text-right">
+                            <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">ปิด</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(resultModal);
+                
+                // ปิด modal
+                resultModal.querySelector('button').addEventListener('click', () => {
+                    document.body.removeChild(resultModal);
+                });
+                
+                showNotification('วิเคราะห์รูปภาพสำเร็จ');
+            } catch (error) {
+                console.error("Error analyzing image:", error);
+                showNotification('เกิดข้อผิดพลาดในการวิเคราะห์รูปภาพ', false);
+            } finally {
+                loadingContainer.style.display = 'none';
+            }
+        });
+        
+        // เพิ่มปุ่มเข้าไปใน container ที่เหมาะสม
+        detailsContainer.appendChild(analyzeImageBtn);
     }
     
     function renderIssueFormForTransfer() {
@@ -1904,13 +2043,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 itemDiv.querySelector('.issue-other-details').classList.toggle('hidden', !e.target.checked);
             });
             itemDiv.querySelector('.remove-issue-item-btn').addEventListener('click', () => itemDiv.remove());
+            
+            // เพิ่มปุ่มวิเคราะห์รูปภาพปัญหาด้วย AI
+            const analyzeIssueImageBtn = document.createElement('button');
+            analyzeIssueImageBtn.className = 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mt-2';
+            analyzeIssueImageBtn.textContent = 'วิเคราะห์รูปภาพปัญหาด้วย AI';
+            analyzeIssueImageBtn.addEventListener('click', async () => {
+                if (itemForm.issueImages.length === 0) {
+                    showNotification('กรุณาอัปโหลดรูปภาพก่อนวิเคราะห์', false);
+                    return;
+                }
+                
+                const loadingContainer = document.getElementById('loading-container');
+                loadingContainer.style.display = 'flex';
+                
+                try {
+                    // วิเคราะห์รูปภาพแรกในรายการ
+                    const analysisResult = await analyzeImageWithGemini(
+                        itemForm.issueImages[0].split(',')[1], // ตัดส่วน header ของ base64 ออก
+                        "วิเคราะห์รูปภาพนี้และบอกว่ามีปัญหาอะไรบ้าง สาเหตุอะไร"
+                    );
+                    
+                    // แสดงผลการวิเคราะห์ใน textarea
+                    const issueNotesTextarea = itemForm.querySelector('.issue-notes');
+                    if (issueNotesTextarea) {
+                        issueNotesTextarea.value = analysisResult;
+                    }
+                    
+                    showNotification('วิเคราะห์รูปภาพสำเร็จ');
+                } catch (error) {
+                    console.error("Error analyzing image:", error);
+                    showNotification('เกิดข้อผิดพลาดในการวิเคราะห์รูปภาพ', false);
+                } finally {
+                    loadingContainer.style.display = 'none';
+                }
+            });
+            
+            // เพิ่มปุ่มเข้าไปใน itemForm
+            itemDiv.appendChild(analyzeIssueImageBtn);
         }
         addIssueItem();
         formWrapper.querySelector('.add-issue-item-btn').addEventListener('click', addIssueItem);
         formWrapper.querySelector('.save-transfer-issues-btn').addEventListener('click', () => saveTransferIssues(formWrapper));
     }
     
-    // MODIFIED saveTransferIssues FUNCTION
+    // ฟังก์ชัน saveTransferIssues ที่แก้ไขแล้ว
     async function saveTransferIssues(formWrapper) {
         // แสดง popup เลือกพนักงานสำหรับรายงานปัญหา
         showIssueEmployeeSelectionModal(async (selectedEmployeeIds) => {
@@ -2230,6 +2407,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatMessages = document.getElementById('chat-messages');
     let chatHistory = [];
     
+    // เพิ่มปุ่มอัปโหลดรูปภาพในหน้าแชท
+    const chatImageUploadBtn = document.createElement('button');
+    chatImageUploadBtn.className = 'px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300';
+    chatImageUploadBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`;
+    chatImageUploadBtn.addEventListener('click', () => {
+        document.getElementById('chat-image-input').click();
+    });
+
+    const chatImageInput = document.createElement('input');
+    chatImageInput.type = 'file';
+    chatImageInput.id = 'chat-image-input';
+    chatImageInput.accept = 'image/*';
+    chatImageInput.style.display = 'none';
+    chatImageInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            try {
+                const resizedBase64 = await resizeImage(file, 800, 600, 0.8);
+                
+                // แสดงรูปภาพที่เลือก
+                const imagePreview = document.createElement('div');
+                imagePreview.className = 'relative inline-block mt-2';
+                imagePreview.innerHTML = `
+                    <img src="${resizedBase64}" class="max-w-xs max-h-48 rounded-lg shadow-md">
+                    <button class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center">&times;</button>
+                `;
+                
+                imagePreview.querySelector('button').addEventListener('click', () => {
+                    imagePreview.remove();
+                });
+                
+                chatForm.appendChild(imagePreview);
+                
+                // เก็บรูปภาพไว้ส่งไปกับข้อความ
+                chatForm.dataset.imageData = resizedBase64;
+            } catch (error) {
+                console.error("Error processing image:", error);
+                showNotification("เกิดข้อผิดพลาดในการประมวลผลรูปภาพ", false);
+            }
+        }
+    });
+
+    // เพิ่มปุ่มอัปโหลดรูปภาพเข้าไปในฟอร์มแชท
+    const chatFormContainer = document.querySelector('.chat-form-container');
+    if (chatFormContainer) {
+        chatFormContainer.appendChild(chatImageUploadBtn);
+        chatFormContainer.appendChild(chatImageInput);
+    }
+    
     function addChatMessage(message, sender) {
         const bubble = document.createElement('div');
         bubble.classList.add('chat-bubble', sender === 'user' ? 'user-bubble' : 'ai-bubble');
@@ -2242,26 +2468,68 @@ document.addEventListener('DOMContentLoaded', () => {
     
     addChatMessage('สวัสดีครับ ผม INBOUND-ASSISTANT ผู้ช่วย AI อารมณ์ดี พร้อมให้บริการครับ! ไม่ว่าจะเป็นการค้นหาข้อมูล TFOR, สรุปยอด, หรือขั้นตอนการใช้งานต่างๆ ถามมาได้เลยครับ!', 'ai');
     
+    // แก้ไขการส่งข้อความให้รองรับรูปภาพ
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const userMessage = chatInput.value.trim();
-        if (!userMessage) return;
-        addChatMessage(userMessage, 'user');
-        chatInput.value = '';
-        const thinkingBubble = document.createElement('div');
-        thinkingBubble.classList.add('chat-bubble', 'ai-bubble');
-        thinkingBubble.textContent = 'กำลังประมวลผล...';
-        chatMessages.appendChild(thinkingBubble);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-        const dataContext = JSON.stringify({transfers: allTransfersData, issues: issuesData});
-        const fullPrompt = `คุณคือผู้ช่วย AI ของ INBOUND SYSTEM. จงตอบคำถามต่อไปนี้ให้กระชับและสั้นที่สุด โดยใช้ข้อมูลจาก JSON ที่ให้มาเท่านั้น ห้ามใช้ความรู้ทั่วไปในการตอบ. หากข้อมูลไม่มีใน JSON ให้ตอบว่า "ไม่พบข้อมูล". ข้อมูล JSON: ${dataContext} คำถาม: "${userMessage}"`;
-        try {
-            const aiResponse = await callGeminiAPI(fullPrompt);
-            thinkingBubble.remove();
-            addChatMessage(aiResponse, 'ai');
-        } catch (error) {
-            thinkingBubble.textContent = 'ขออภัยค่ะ ระบบ AI กำลังมีผู้ใช้งานจำนวนมาก กรุณาลองใหม่อีกครั้ง';
-            console.error("AI Error:", error);
+        if (!userMessage && !chatForm.dataset.imageData) return;
+        
+        // ถ้ามีรูปภาพ ให้วิเคราะห์รูปภาพ
+        if (chatForm.dataset.imageData) {
+            addChatMessage('[รูปภาพ]', 'user');
+            const thinkingBubble = document.createElement('div');
+            thinkingBubble.classList.add('chat-bubble', 'ai-bubble');
+            thinkingBubble.textContent = 'กำลังวิเคราะห์รูปภาพ...';
+            chatMessages.appendChild(thinkingBubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            try {
+                const imageAnalysis = await analyzeImageWithGemini(
+                    chatForm.dataset.imageData.split(',')[1], // ตัดส่วน header ของ base64 ออก
+                    userMessage || "วิเคราะห์รูปภาพนี้และบอกว่ามีอะไรบ้าง"
+                );
+                
+                thinkingBubble.remove();
+                addChatMessage(imageAnalysis, 'ai');
+                
+                // ลบรูปภาพที่แสดง
+                const imagePreview = chatForm.querySelector('.relative');
+                if (imagePreview) {
+                    imagePreview.remove();
+                }
+                delete chatForm.dataset.imageData;
+            } catch (error) {
+                thinkingBubble.textContent = 'ขออภัยค่ะ ระบบ AI กำลังมีผู้ใช้งานจำนวนมาก กรุณาลองใหม่อีกครั้ง';
+                console.error("AI Error:", error);
+            }
+        }
+        
+        // ถ้ามีข้อความ ให้ส่งข้อความตามปกติ
+        if (userMessage) {
+            addChatMessage(userMessage, 'user');
+            chatInput.value = '';
+            
+            const thinkingBubble = document.createElement('div');
+            thinkingBubble.classList.add('chat-bubble', 'ai-bubble');
+            thinkingBubble.textContent = 'กำลังประมวลผล...';
+            chatMessages.appendChild(thinkingBubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            const dataContext = JSON.stringify({
+                transfers: allTransfersData.slice(0, 10),
+                issues: Object.values(issuesData).flat().slice(0, 10)
+            });
+            
+            const fullPrompt = `คุณคือผู้ช่วย AI ของ INBOUND SYSTEM. จงตอบคำถามต่อไปนี้ให้กระชับและสั้นที่สุด (ไม่เกิน 2-3 ประโยค) โดยใช้ข้อมูลจาก JSON ที่ให้มาเท่านั้น ห้ามใช้ความรู้ทั่วไปในการตอบ. หากข้อมูลไม่มีใน JSON ให้ตอบว่า "ไม่พบข้อมูล". ข้อมูล JSON: ${dataContext} คำถาม: "${userMessage}"`;
+            
+            try {
+                const aiResponse = await callGeminiAPI(fullPrompt);
+                thinkingBubble.remove();
+                addChatMessage(aiResponse, 'ai');
+            } catch (error) {
+                thinkingBubble.textContent = 'ขออภัยค่ะ ระบบ AI กำลังมีผู้ใช้งานจำนวนมาก กรุณาลองใหม่อีกครั้ง';
+                console.error("AI Error:", error);
+            }
         }
     });
     
@@ -2455,7 +2723,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.stopPropagation(); // Prevent modal click handler from firing
                 const transferId = e.target.dataset.id;
                 try {
-                    await updateDoc(doc(db, "transfers", transferId), { scheduledDate: null, scheduledByUid: null, scheduledByName: null });
+                    await updateDoc(doc(db, "transfers", transferId), { 
+                        scheduledDate: null, 
+                        scheduledByUid: null, 
+                        scheduledByName: null 
+                    });
                     showNotification('ยกเลิกแผนงานสำเร็จ');
                     document.getElementById('close-details-modal').click();
                 } catch (error) {
@@ -2535,7 +2807,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="empty-state">
                     <div class="empty-state-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m4-4l-4 4m0 0l-4-4m4 4V4"></path>
                         </svg>
                     </div>
                     <h3 class="empty-state-title">ไม่มีรายการที่ต้องรับสินค้า</h3>
@@ -2671,6 +2943,66 @@ document.addEventListener('DOMContentLoaded', () => {
             
             checkedTforContainer.appendChild(cardsContainer);
         }
+        
+        // เพิ่มปุ่มวิเคราะห์รูปภาพด้วย AI
+        const analyzeImageBtn = document.createElement('button');
+        analyzeImageBtn.className = 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mt-4';
+        analyzeImageBtn.textContent = 'วิเคราะห์รูปภาพด้วย AI';
+        analyzeImageBtn.addEventListener('click', async () => {
+            if (uploadedImagesBase64.length === 0) {
+                showNotification('กรุณาอัปโหลดรูปภาพก่อนวิเคราะห์', false);
+                return;
+            }
+            
+            const loadingContainer = document.getElementById('loading-container');
+            loadingContainer.style.display = 'flex';
+            
+            try {
+                // วิเคราะห์รูปภาพแรกในรายการ
+                const analysisResult = await analyzeImageWithGemini(
+                    uploadedImagesBase64[0].split(',')[1], // ตัดส่วน header ของ base64 ออก
+                    "วิเคราะห์รูปภาพนี้และบอกว่ามีสินค้าอะไรบ้าง มีปัญหาอะไรไหม"
+                );
+                
+                // แสดงผลการวิเคราะห์
+                const resultModal = document.createElement('div');
+                resultModal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
+                resultModal.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">ผลการวิเคราะห์รูปภาพ</h3>
+                            <button class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+                        </div>
+                        <div class="mb-4">
+                            <img src="${uploadedImagesBase64[0]}" class="w-full h-auto rounded-lg shadow-md mb-4">
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="whitespace-pre-line">${analysisResult}</p>
+                        </div>
+                        <div class="mt-6 text-right">
+                            <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">ปิด</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(resultModal);
+                
+                // ปิด modal
+                resultModal.querySelector('button').addEventListener('click', () => {
+                    document.body.removeChild(resultModal);
+                });
+                
+                showNotification('วิเคราะห์รูปภาพสำเร็จ');
+            } catch (error) {
+                console.error("Error analyzing image:", error);
+                showNotification('เกิดข้อผิดพลาดในการวิเคราะห์รูปภาพ', false);
+            } finally {
+                loadingContainer.style.display = 'none';
+            }
+        });
+        
+        // เพิ่มปุ่มเข้าไปใน container ที่เหมาะสม
+        checkedTforContainer.appendChild(analyzeImageBtn);
     }
     
     function renderTodaysPlanView() {
@@ -2690,7 +3022,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (todaysTransfers.length === 0) {
             container.innerHTML = `
                 <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
-                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
                     <h3 class="text-xl font-bold text-gray-700 mb-2">ไม่มีงานวางแผนสำหรับวันนี้</h3>
@@ -2805,7 +3137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const completedContainer = completedSection.querySelector('.grid');
             completedTransfers.forEach(transfer => {
                 const card = document.createElement('div');
-                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow';
+                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-green-500 cursor-pointer hover:bg-shadow-lg transition-shadow';
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
@@ -3301,7 +3633,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3 class="text-xl font-bold text-gray-800">${user.firstName} ${user.lastName}</h3>
                         <p class="text-lg font-bold">
                             <span class="text-amber-500">คะแนนรวม: ${totalStars} ★</span>
-                            ${blackStarsCount > 0 ? `<span class="text-red-500 ml-2">(หัก ${blackStarsCount} ★)</span>` : ''}
                         </p>
                     </div>
                 </div>
@@ -3340,7 +3671,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // NEW renderUserManagement function
+    // ฟังก์ชัน renderUserManagement
     function renderUserManagement() {
         const container = document.getElementById('user-list-container');
         container.innerHTML = '';
@@ -3466,11 +3797,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const receivedCount = completedTransfersData.filter(t => t.lastReceivedByUid === user.id).length;
         
         // Count issues reported by this user
-        const allIssues = Object.values(issuesData).flat();
-        const reportedIssuesCount = allIssues.filter(i => i.reportedByUid === user.id).length;
+        const allUserIssues = Object.values(issuesData).flat();
+        const reportedIssuesCount = allUserIssues.filter(i => i.reportedByUid === user.id).length;
         
         // Count issues found by this user (where they were the checker)
-        const foundIssuesCount = allIssues.filter(i => i.checkerUid === user.id).length;
+        const foundIssuesCount = allUserIssues.filter(i => i.checkerUid === user.id).length;
         
         const performanceScore = checkedCount + createdCount + foundIssuesCount + reportedIssuesCount + receivedCount + totalStars;
         const issueRate = checkedCount > 0 ? ((reportedIssuesCount / checkedCount) * 100).toFixed(1) : 0;
@@ -3495,6 +3826,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 `}).join('');
+            });
         }
         container.innerHTML = `
             <button id="back-to-kpi-summary" class="mb-6 px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">← กลับไปที่สรุป</button>
@@ -3505,7 +3837,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h2 class="text-2xl font-bold">${user.firstName} ${user.lastName}</h2>
                         <p class="text-lg font-bold">
                             <span class="text-amber-500">คะแนนรวม: ${totalStars} ★</span>
-                            ${blackStarsCount > 0 ? `<span class="text-red-500 ml-2">(หัก ${blackStarsCount} ★)</span>` : ''}
                         </p>
                     </div>
                 </div>
@@ -3561,7 +3892,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(currentChartInstances.kpiChart) currentChartInstances.kpiChart.destroy();
         });
         
-        // NEW event listeners with role checking
+        // event listeners with role checking
         document.getElementById('add-score-btn').addEventListener('click', (e) => {
             const userRole = currentUserProfile?.role || 'Officer';
             // Admin, Supervisor และ Senior สามารถให้คะแนนได้
