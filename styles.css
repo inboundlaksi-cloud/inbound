@@ -543,7 +543,6 @@ tr:hover {
     margin: 0 0.5rem;
     color: #9ca3af;
 }
-
 /* ในไฟล์ CSS - เพิ่มส่วนนี้ */
 .cursor-not-allowed {
     cursor: not-allowed !important;
@@ -551,7 +550,6 @@ tr:hover {
 .opacity-50 {
     opacity: 0.5 !important;
 }
-
 /* สำหรับแสดงสถานะของผู้ใช้ */
 .user-role-badge {
     display: inline-block;
@@ -579,5 +577,15 @@ tr:hover {
 }
 .role-admin {
     background-color: #fee2e2;
+    color: #991b1b;
+}
+/* สไตล์สำหรับปุ่มยกเลิกการเช็ค */
+.cancel-pallet-check-button {
+    margin-left: 8px;
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+.cancel-pallet-check-button:hover {
+    background-color: #fecaca;
     color: #991b1b;
 }
