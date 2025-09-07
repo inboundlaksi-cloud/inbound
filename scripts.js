@@ -153,6 +153,50 @@ document.addEventListener('DOMContentLoaded', () => {
     let uploadedImagesBase64 = [];
     let newProfilePicBase64 = null;
     
+    // Define role permissions mapping
+    const ROLE_PERMISSIONS = {
+        'Admin': [
+            'admin-only', 
+            'viewer-only',
+            'supervisor-only', 
+            'senior-only', 
+            'delete-permission', 
+            'canViewKpi', 
+            'canManageUsers', 
+            'canManageSystem', 
+            'canPlanWork', 
+            'canComment',
+            'canEdit'
+        ],
+        'Viewer': [
+            'viewer-only', 
+            'supervisor-only', 
+            'senior-only', 
+            'canViewKpi', 
+            'canPlanWork', 
+            'canComment'
+        ],
+        'Supervisor': [
+            'supervisor-only', 
+            'senior-only', 
+            'delete-permission', 
+            'canViewKpi', 
+            'canManageUsers', 
+            'canPlanWork', 
+            'canComment',
+            'canEdit'
+        ],
+        'Senior': [
+            'senior-only', 
+            'canPlanWork', 
+            'canComment',
+            'canEdit'
+        ],
+        'Officer': [
+            'canComment'
+        ]
+    };
+    
     function showNotification(message, isSuccess = true) {
         const toast = document.getElementById('notification-toast');
         const messageP = document.getElementById('notification-message');
@@ -206,64 +250,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateUIForRoles() {
         if (!currentUserProfile) return;
         const role = currentUserProfile.role || 'Officer';
-        
-        // กำหนดสิทธิ์สำหรับแต่ละระดับ (เรียงจากต่ำสุดไปสูงสุด)
-        const roles = {
-            'Admin': [
-                'admin-only', 
-                'viewer-only', // เพิ่มสิทธิ์ viewer
-                'supervisor-only', 
-                'senior-only', 
-                'delete-permission', 
-                'canViewKpi', 
-                'canManageUsers', 
-                'canManageSystem', 
-                'canPlanWork', 
-                'canComment',
-                'canEdit' // สิทธิ์ในการแก้ไขข้อมูล
-            ],
-            'Viewer': [
-                'viewer-only', 
-                'supervisor-only', 
-                'senior-only', 
-                'canViewKpi', 
-                'canPlanWork', 
-                'canComment'
-                // ไม่มีสิทธิ์ในการแก้ไขข้อมูล
-            ],
-            'Supervisor': [
-                'supervisor-only', 
-                'senior-only', 
-                'delete-permission', 
-                'canViewKpi', 
-                'canManageUsers', 
-                'canPlanWork', 
-                'canComment',
-                'canEdit'
-            ],
-            'Senior': [
-                'senior-only', 
-                'canPlanWork', 
-                'canComment',
-                'canEdit'
-            ],
-            'Officer': [
-                'canComment'
-                // เฉพาะสิทธิ์พื้นฐานเท่านั้น
-            ]
-        };
+        const permissions = ROLE_PERMISSIONS[role] || [];
         
         // ซ่อนทุกองค์ประกอบที่มี data-permission ก่อน
         document.querySelectorAll('[data-permission]').forEach(el => el.style.display = 'none');
         
         // แสดงองค์ประกอบตามสิทธิ์ของผู้ใช้
-        if (roles[role]) {
-            roles[role].forEach(permission => {
-                document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
-                    el.style.display = 'block'; // หรือ 'inline-block', 'flex' ตามความเหมาะสม
-                });
+        permissions.forEach(permission => {
+            document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
+                el.style.display = 'block'; // หรือ 'inline-block', 'flex' ตามความเหมาะสม
             });
-        }
+        });
         
         // สำหรับ Viewer ให้ปิดการใช้งานปุ่มแก้ไขทั้งหมด
         if (role === 'Viewer') {
@@ -480,15 +477,16 @@ document.addEventListener('DOMContentLoaded', () => {
         showMainView(views.statistics);
     });
     
-    // NEW go-to-kpi event listener with role checking
+    // FIXED go-to-kpi event listener with permission checking
     document.getElementById('go-to-kpi').addEventListener('click', () => {
         const userRole = currentUserProfile?.role || 'Officer';
-        // Viewer, Admin และ Supervisor สามารถเข้าถึงหน้า KPI ได้
-        if (userRole === 'Admin' || userRole === 'Viewer' || userRole === 'Supervisor') {
+        const userPermissions = ROLE_PERMISSIONS[userRole] || [];
+        
+        if (userPermissions.includes('canViewKpi')) {
             renderKpiView();
             showMainView(views.kpi);
         } else {
-            showNotification('คุณไม่มีสิทธิ์เข้าถึงหน้า KPI พนักงาน', false);
+            showNotification('คุณไม่มีสิทธิ์เข้าถึงหน้า KPI', false);
         }
     });
     
