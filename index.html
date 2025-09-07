@@ -219,9 +219,18 @@
             </header>
             <main class="container mx-auto px-4 py-8">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 text-center">
-                    <div id="summary-todays-plan-card" class="bg-white p-4 rounded-2xl shadow-lg cursor-pointer transition hover:shadow-xl hover:-translate-y-1">
-                        <h4 class="font-semibold text-gray-600">งานประจำวันนี้</h4>
-                        <p id="summary-todays-plan" class="text-4xl font-bold text-purple-500 mt-1">0</p>
+                    <div id="quick-form-card" class="bg-white p-4 rounded-2xl shadow-lg cursor-pointer transition hover:shadow-xl hover:-translate-y-1">
+                        <div class="flex items-center">
+                            <div class="bg-blue-100 p-3 rounded-full mr-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-600">สร้างฟอร์มด่วน</h4>
+                                <p class="text-sm text-gray-500">เพิ่มข้อมูล TFOR ใหม่ทันที</p>
+                            </div>
+                        </div>
                     </div>
                     <div id="summary-pending-card" class="bg-white p-4 rounded-2xl shadow-lg cursor-pointer transition hover:shadow-xl hover:-translate-y-1">
                         <h4 class="font-semibold text-gray-600">งานที่เข้าวันนี้</h4>
