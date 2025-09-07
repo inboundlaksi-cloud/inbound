@@ -200,37 +200,80 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // NEW updateUIForRoles function
     function updateUIForRoles() {
         if (!currentUserProfile) return;
         const role = currentUserProfile.role || 'Officer';
+        
+        // กำหนดสิทธิ์สำหรับแต่ละระดับ (เรียงจากต่ำสุดไปสูงสุด)
         const roles = {
-            'Admin': ['admin-only', 'admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canManageSystem', 'canPlanWork', 'canComment'],
-            'Supervisor': ['admin-supervisor-only', 'senior-and-up', 'delete-permission', 'canViewKpi', 'canManageUsers', 'canPlanWork', 'canComment'],
-            'Senior': ['senior-and-up', 'canViewKpi', 'canPlanWork', 'canComment'],
-            'Officer': ['canComment'],
-            'Viewer': []
+            'Admin': [
+                'admin-only', 
+                'viewer-only', // เพิ่มสิทธิ์ viewer
+                'supervisor-only', 
+                'senior-only', 
+                'delete-permission', 
+                'canViewKpi', 
+                'canManageUsers', 
+                'canManageSystem', 
+                'canPlanWork', 
+                'canComment',
+                'canEdit' // สิทธิ์ในการแก้ไขข้อมูล
+            ],
+            'Viewer': [
+                'viewer-only', 
+                'supervisor-only', 
+                'senior-only', 
+                'canViewKpi', 
+                'canPlanWork', 
+                'canComment'
+                // ไม่มีสิทธิ์ในการแก้ไขข้อมูล
+            ],
+            'Supervisor': [
+                'supervisor-only', 
+                'senior-only', 
+                'delete-permission', 
+                'canViewKpi', 
+                'canManageUsers', 
+                'canPlanWork', 
+                'canComment',
+                'canEdit'
+            ],
+            'Senior': [
+                'senior-only', 
+                'canPlanWork', 
+                'canComment',
+                'canEdit'
+            ],
+            'Officer': [
+                'canComment'
+                // เฉพาะสิทธิ์พื้นฐานเท่านั้น
+            ]
         };
         
-        // Hide all role-based elements first
+        // ซ่อนทุกองค์ประกอบที่มี data-permission ก่อน
         document.querySelectorAll('[data-permission]').forEach(el => el.style.display = 'none');
         
-        // Show elements based on the current user's role
+        // แสดงองค์ประกอบตามสิทธิ์ของผู้ใช้
         if (roles[role]) {
             roles[role].forEach(permission => {
                 document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
-                    el.style.display = 'block'; // Or 'inline-block', 'flex' etc. as needed
+                    el.style.display = 'block'; // หรือ 'inline-block', 'flex' ตามความเหมาะสม
                 });
             });
         }
         
-        // Handle delete permissions specifically for senior and viewer roles
-        if (role === 'Senior' || role === 'Viewer') {
-            document.querySelectorAll('.delete-permission').forEach(el => el.style.display = 'none');
+        // สำหรับ Viewer ให้ปิดการใช้งานปุ่มแก้ไขทั้งหมด
+        if (role === 'Viewer') {
+            document.querySelectorAll('.edit-button, .delete-permission, input, select, textarea, button[type="submit"]').forEach(el => {
+                el.disabled = true;
+                el.classList.add('opacity-50', 'cursor-not-allowed');
+            });
         }
         
-        // For Viewer role, hide all edit buttons
-        if (role === 'Viewer') {
-            document.querySelectorAll('.edit-button').forEach(el => el.style.display = 'none');
+        // สำหรับ Officer ให้ซ่อนปุ่มลบและปุ่มแก้ไขบางปุ่ม
+        if (role === 'Officer') {
+            document.querySelectorAll('.delete-permission').forEach(el => el.style.display = 'none');
         }
     }
     
@@ -434,10 +477,19 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAdvancedStatistics();
         showMainView(views.statistics);
     });
+    
+    // NEW go-to-kpi event listener with role checking
     document.getElementById('go-to-kpi').addEventListener('click', () => {
-        renderKpiView();
-        showMainView(views.kpi);
+        const userRole = currentUserProfile?.role || 'Officer';
+        // Viewer, Admin และ Supervisor สามารถเข้าถึงหน้า KPI ได้
+        if (userRole === 'Admin' || userRole === 'Viewer' || userRole === 'Supervisor') {
+            renderKpiView();
+            showMainView(views.kpi);
+        } else {
+            showNotification('คุณไม่มีสิทธิ์เข้าถึงหน้า KPI พนักงาน', false);
+        }
     });
+    
     document.getElementById('profile-button').addEventListener('click', () => {
         renderProfileView();
         showMainView(views.profile);
@@ -3177,6 +3229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // NEW renderUserManagement function
     function renderUserManagement() {
         const container = document.getElementById('user-list-container');
         container.innerHTML = '';
@@ -3189,19 +3242,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ตำแหน่ง</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase admin-only">จัดการ</th>
             </tr></thead>
-            <tbody class="divide-y divide-gray-200"></tbody>`;
+            <tbody class="divide-y divide-gray-200"></tbody>
+        `;
         const tbody = table.querySelector('tbody');
-        allUsers.forEach(user => {
-            if (user.role === 'Admin') return;
+        
+        // เรียงลำดับผู้ใช้ตามระดับตำแหน่ง
+        const orderedUsers = [...allUsers].sort((a, b) => {
+            const roleOrder = { 'Officer': 1, 'Senior': 2, 'Supervisor': 3, 'Viewer': 4, 'Admin': 5 };
+            return (roleOrder[a.role] || 0) - (roleOrder[b.role] || 0);
+        });
+        
+        orderedUsers.forEach(user => {
+            if (user.role === 'Admin') return; // ไม่แสดง Admin ในรายการ
+            
             const row = tbody.insertRow();
             row.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap">${user.firstName} ${user.lastName}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${user.email}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <select class="role-select rounded-md border-gray-300" data-uid="${user.id}">
-                        <option value="Supervisor" ${user.role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
+                        <option value="Officer" ${user.role === 'Officer' ? 'selected' : ''}>Officer</option>
                         <option value="Senior" ${user.role === 'Senior' ? 'selected' : ''}>Senior</option>
-                        <option value="Officer" ${!user.role || user.role === 'Officer' ? 'selected' : ''}>Officer</option>
+                        <option value="Supervisor" ${user.role === 'Supervisor' ? 'selected' : ''}>Supervisor</option>
                         <option value="Viewer" ${user.role === 'Viewer' ? 'selected' : ''}>Viewer</option>
                     </select>
                 </td>
@@ -3388,12 +3450,29 @@ document.addEventListener('DOMContentLoaded', () => {
             container.classList.add('hidden');
             if(currentChartInstances.kpiChart) currentChartInstances.kpiChart.destroy();
         });
+        
+        // NEW event listeners with role checking
         document.getElementById('add-score-btn').addEventListener('click', (e) => {
-            showScoreModal(e.target.dataset.userId);
+            const userRole = currentUserProfile?.role || 'Officer';
+            // Admin, Supervisor และ Senior สามารถให้คะแนนได้
+            if (userRole === 'Admin' || userRole === 'Supervisor' || userRole === 'Senior') {
+                showScoreModal(e.target.dataset.userId);
+            } else {
+                showNotification('คุณไม่มีสิทธิ์ในการให้คะแนน', false);
+            }
         });
+        
+        // In the section for giving star points
         document.getElementById('add-star-points-btn').addEventListener('click', (e) => {
-            showStarPointsModal(e.target.dataset.userId);
+            const userRole = currentUserProfile?.role || 'Officer';
+            // Admin และ Supervisor สามารถให้คะแนนดาวได้
+            if (userRole === 'Admin' || userRole === 'Supervisor') {
+                showStarPointsModal(e.target.dataset.userId);
+            } else {
+                showNotification('คุณไม่มีสิทธิ์ในการให้คะแนนดาว', false);
+            }
         });
+        
         container.querySelectorAll('.delete-score-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const scoreId = e.currentTarget.dataset.scoreId;
@@ -3971,4 +4050,4 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error logging action:", error);
         }
     }
-});
+});  // End of DOMContentLoaded
