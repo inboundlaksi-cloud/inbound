@@ -3,7 +3,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 // Firestore Database
 import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
 // Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
@@ -13,19 +12,14 @@ const firebaseConfig = {
     messagingSenderId: "1080446836155",
     appId: "1:1080446836155:web:da8d3f12f76d83b408389e"
 };
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
-
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
-    
-    // ลดขนาด payload และตั้งค่าที่เหมาะสมเพื่อประหยัด token
     const payload = {
         contents: [{
             parts: [{
@@ -33,10 +27,10 @@ async function callGeminiAPI(prompt) {
             }]
         }],
         generationConfig: {
-            temperature: 0.3, // ลด temperature เพื่อให้คำตอบกระชับขึ้น
-            topK: 20, // ลด topK
-            topP: 0.8, // ลด topP
-            maxOutputTokens: 150, // ลด maxOutputTokens เพื่อให้คำตอบสั้นลง
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
         },
         safetySettings: [
             {
@@ -86,7 +80,6 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
-
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -158,48 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let uploadedImagesBase64 = [];
     let newProfilePicBase64 = null;
     
-    // Define role permissions mapping
-    const ROLE_PERMISSIONS = {
-        'Admin': [
-            'admin-only', 
-            'viewer-only',
-            'supervisor-only', 
-            'senior-only', 
-            'delete-permission', 
-            'canViewKpi', 
-            'canManageUsers', 
-            'canManageSystem', 
-            'canPlanWork', 
-            'canComment',
-            'canEdit'
-        ],
-        'Viewer': [
-            'viewer-only', 
-            'canViewKpi', 
-            'canPlanWork', 
-            'canComment'
-        ],
-        'Supervisor': [
-            'supervisor-only', 
-            'senior-only', 
-            'delete-permission', 
-            'canViewKpi', 
-            'canManageUsers', 
-            'canPlanWork', 
-            'canComment',
-            'canEdit'
-        ],
-        'Senior': [
-            'senior-only', 
-            'canPlanWork', 
-            'canComment',
-            'canEdit'
-        ],
-        'Officer': [
-            'canComment'
-        ]
-    };
-    
     function showNotification(message, isSuccess = true) {
         const toast = document.getElementById('notification-toast');
         const messageP = document.getElementById('notification-message');
@@ -253,19 +204,64 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateUIForRoles() {
         if (!currentUserProfile) return;
         const role = currentUserProfile.role || 'Officer';
-        const permissions = ROLE_PERMISSIONS[role] || [];
+        
+        // กำหนดสิทธิ์สำหรับแต่ละระดับ (เรียงจากต่ำสุดไปสูงสุด)
+        const roles = {
+            'Admin': [
+                'admin-only', 
+                'viewer-only', // เพิ่มสิทธิ์ viewer
+                'supervisor-only', 
+                'senior-only', 
+                'delete-permission', 
+                'canViewKpi', 
+                'canManageUsers', 
+                'canManageSystem', 
+                'canPlanWork', 
+                'canComment',
+                'canEdit' // สิทธิ์ในการแก้ไขข้อมูล
+            ],
+            'Viewer': [
+                'viewer-only', 
+                'supervisor-only', 
+                'senior-only', 
+                'canViewKpi', 
+                'canPlanWork', 
+                'canComment'
+                // ไม่มีสิทธิ์ในการแก้ไขข้อมูล
+            ],
+            'Supervisor': [
+                'supervisor-only', 
+                'senior-only', 
+                'delete-permission', 
+                'canViewKpi', 
+                'canManageUsers', 
+                'canPlanWork', 
+                'canComment',
+                'canEdit'
+            ],
+            'Senior': [
+                'senior-only', 
+                'canPlanWork', 
+                'canComment',
+                'canEdit'
+            ],
+            'Officer': [
+                'canComment'
+                // เฉพาะสิทธิ์พื้นฐานเท่านั้น
+            ]
+        };
         
         // ซ่อนทุกองค์ประกอบที่มี data-permission ก่อน
-        document.querySelectorAll('[data-permission]').forEach(el => {
-            el.style.display = 'none';
-        });
+        document.querySelectorAll('[data-permission]').forEach(el => el.style.display = 'none');
         
         // แสดงองค์ประกอบตามสิทธิ์ของผู้ใช้
-        permissions.forEach(permission => {
-            document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
-                el.style.display = 'block'; // หรือ 'inline-block', 'flex' ตามความเหมาะสม
+        if (roles[role]) {
+            roles[role].forEach(permission => {
+                document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
+                    el.style.display = 'block'; // หรือ 'inline-block', 'flex' ตามความเหมาะสม
+                });
             });
-        });
+        }
         
         // สำหรับ Viewer ให้ปิดการใช้งานปุ่มแก้ไขทั้งหมด
         if (role === 'Viewer') {
@@ -277,9 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // สำหรับ Officer ให้ซ่อนปุ่มลบและปุ่มแก้ไขบางปุ่ม
         if (role === 'Officer') {
-            document.querySelectorAll('.delete-permission').forEach(el => {
-                el.style.display = 'none';
-            });
+            document.querySelectorAll('.delete-permission').forEach(el => el.style.display = 'none');
         }
     }
     
@@ -484,16 +478,15 @@ document.addEventListener('DOMContentLoaded', () => {
         showMainView(views.statistics);
     });
     
-    // FIXED go-to-kpi event listener with permission checking
+    // NEW go-to-kpi event listener with role checking
     document.getElementById('go-to-kpi').addEventListener('click', () => {
         const userRole = currentUserProfile?.role || 'Officer';
-        const userPermissions = ROLE_PERMISSIONS[userRole] || [];
-        
-        if (userPermissions.includes('canViewKpi')) {
+        // Viewer, Admin และ Supervisor สามารถเข้าถึงหน้า KPI ได้
+        if (userRole === 'Admin' || userRole === 'Viewer' || userRole === 'Supervisor') {
             renderKpiView();
             showMainView(views.kpi);
         } else {
-            showNotification('คุณไม่มีสิทธิ์เข้าถึงหน้า KPI', false);
+            showNotification('คุณไม่มีสิทธิ์เข้าถึงหน้า KPI พนักงาน', false);
         }
     });
     
@@ -1118,101 +1111,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // NEW FUNCTION: ยกเลิกการเช็คพาเลท
-    async function handleCancelPalletCheck(palletNum, buttonElement) {
-        // แสดง popup เลือกพนักงานสำหรับยกเลิกการเช็ค
-        showEmployeeSelectionModal(palletNum, async (selectedEmployeeIds) => {
-            if (buttonElement) {
-                buttonElement.classList.toggle('bg-green-500', false);
-                buttonElement.classList.toggle('text-white', false);
-                buttonElement.classList.toggle('bg-gray-200', true);
-            }
-            
-            const checkedPallets = [...(currentTforData.checkedPallets || [])];
-            const index = checkedPallets.indexOf(palletNum);
-            if (index > -1) checkedPallets.splice(index, 1);
-            currentTforData.checkedPallets = checkedPallets; 
-            const transferDocRef = doc(db, "transfers", currentTforData.id);
-            
-            try {
-                await updateDoc(transferDocRef, {
-                    isCompleted: false,
-                    completionDate: null,
-                    checkedPallets: checkedPallets,
-                    lastCheckedByUid: currentUser.uid,
-                    lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    cancelCheckLog: (currentTforData.cancelCheckLog || []).concat(
-                        selectedEmployeeIds.map(empId => {
-                            const employee = allUsers.find(u => u.id === empId);
-                            return {
-                                pallet: palletNum,
-                                user: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
-                                userId: empId,
-                                timestamp: new Date().toISOString()
-                            };
-                        })
-                    )
-                });
-                
-                // หักคะแนนแก่พนักงานทุกคนที่เข้าร่วมตรวจสอบเดิม
-                const originalCheckLog = currentTforData.checkLog?.filter(
-                    log => log.pallet === palletNum
-                ) || [];
-                
-                for (const logEntry of originalCheckLog) {
-                    const empId = logEntry.userId;
-                    if (empId) {
-                        // หาคะแนนที่เคยให้ไปแล้วเพื่อทำการหัก
-                        const scoresSnapshot = await getDocs(query(
-                            collection(db, "scores"),
-                            where("userId", "==", empId),
-                            where("reason", "==", "เช็คสินค้า"),
-                            where("notes", "==", `เช็คพาเลทที่ ${palletNum} ของ TFOR ...${currentTforData.tforNumber}`)
-                        ));
-                        
-                        if (!scoresSnapshot.empty) {
-                            // ลบคะแนนเดิม
-                            const scoreDoc = scoresSnapshot.docs[0];
-                            await deleteDoc(scoreDoc.ref);
-                            
-                            // อัปเดตคะแนนดาวของพนักงาน
-                            const user = allUsers.find(u => u.id === empId);
-                            if (user) {
-                                const newSmallStars = Math.max(0, (user.smallStars || 0) - 1);
-                                const newBigStars = user.bigStars || 0;
-                                
-                                await updateDoc(doc(db, "users", empId), {
-                                    smallStars: newSmallStars,
-                                    bigStars: newBigStars
-                                });
-                                
-                                // อัปเดตข้อมูลในหน่วยความจำ
-                                user.smallStars = newSmallStars;
-                                user.bigStars = newBigStars;
-                            }
-                        }
-                    }
-                }
-                
-                // Log the action
-                await logAction('ยกเลิกการเช็คพาเลท', {
-                    transferId: currentTforData.id,
-                    palletNumber: palletNum,
-                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    employees: selectedEmployeeIds.map(id => {
-                        const emp = allUsers.find(u => u.id === id);
-                        return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
-                    }).join(', ')
-                });
-                
-                showNotification(`ยกเลิกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
-            } catch (error) {
-                console.error("Error updating pallet check status: ", error);
-                showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
-            }
-        });
-    }
-    
     async function handlePalletReceive(palletNum, buttonElement) {
         const isCurrentlyReceived = currentTforData.receivedPallets?.includes(palletNum);
         if (buttonElement) {
@@ -1744,7 +1642,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return date;
     }
     
-    // MODIFIED renderCheckView FUNCTION with cancel check functionality
     function renderCheckView() {
         previousView = detailsView;
         const detailsContainer = document.getElementById('check-details-container');
@@ -1792,7 +1689,7 @@ document.addEventListener('DOMContentLoaded', () => {
         (currentTforData.palletNumbers || []).forEach(palletNum => {
             const checkBtn = document.createElement('button');
             checkBtn.className = 'pallet-check-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105';
-            checkBtn.textContent = `เช็คพาเลทที่ ${palletNum}`;
+            checkBtn.textContent = `พาเลทที่ ${palletNum}`;
             checkBtn.dataset.palletNumber = palletNum;
             if (currentTforData.checkedPallets?.includes(palletNum)) {
                 checkBtn.classList.add('bg-green-500', 'text-white');
@@ -1801,16 +1698,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             checkBtn.addEventListener('click', (e) => handlePalletCheck(palletNum, e.currentTarget));
             palletButtonsContainer.appendChild(checkBtn);
-            
-            // เพิ่มปุ่มยกเลิกการเช็ค
-            if (currentTforData.checkedPallets?.includes(palletNum)) {
-                const cancelCheckBtn = document.createElement('button');
-                cancelCheckBtn.className = 'cancel-pallet-check-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105 bg-red-100 text-red-700';
-                cancelCheckBtn.textContent = `ยกเลิกการเช็คพาเลทที่ ${palletNum}`;
-                cancelCheckBtn.dataset.palletNumber = palletNum;
-                cancelCheckBtn.addEventListener('click', (e) => handleCancelPalletCheck(palletNum, e.currentTarget));
-                palletButtonsContainer.appendChild(cancelCheckBtn);
-            }
             
             const receiveBtn = document.createElement('button');
             receiveBtn.className = 'pallet-receive-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105';
@@ -2258,30 +2145,8 @@ document.addEventListener('DOMContentLoaded', () => {
         thinkingBubble.textContent = 'กำลังประมวลผล...';
         chatMessages.appendChild(thinkingBubble);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        
-        // สร้าง context ที่กระชับและเน้นข้อมูลที่จำเป็นเท่านั้น
-        const dataContext = JSON.stringify({
-            transfers: allTransfersData.map(t => ({
-                id: t.id,
-                tforNumber: t.tforNumber,
-                licensePlate: t.licensePlate,
-                branch: t.branch,
-                palletCount: t.palletCount,
-                isCompleted: t.isCompleted,
-                isReceived: t.isReceived,
-                deliveryDate: t.deliveryDate
-            })),
-            issues: Object.values(issuesData).flat().map(i => ({
-                id: i.id,
-                issueTypes: i.issueTypes,
-                transferId: i.transferId,
-                reportDate: i.reportDate
-            }))
-        });
-        
-        // ปรับปรุง prompt ให้กระชับและชัดเจนยิ่งขึ้น
-        const fullPrompt = `คุณคือผู้ช่วย AI ของ INBOUND SYSTEM. จงตอบคำถามต่อไปนี้ให้กระชับและสั้นที่สุด (ไม่เกิน 2-3 ประโยค) โดยใช้ข้อมูลจาก JSON ที่ให้มาเท่านั้น ห้ามใช้ความรู้ทั่วไปในการตอบ. หากข้อมูลไม่มีใน JSON ให้ตอบว่า "ไม่พบข้อมูล". ข้อมูล JSON: ${dataContext} คำถาม: "${userMessage}"`;
-        
+        const dataContext = JSON.stringify({transfers: allTransfersData, issues: issuesData});
+        const fullPrompt = `คุณคือผู้ช่วย AI ของ INBOUND SYSTEM. จงตอบคำถามต่อไปนี้ให้กระชับและสั้นที่สุด โดยใช้ข้อมูลจาก JSON ที่ให้มาเท่านั้น ห้ามใช้ความรู้ทั่วไปในการตอบ. หากข้อมูลไม่มีใน JSON ให้ตอบว่า "ไม่พบข้อมูล". ข้อมูล JSON: ${dataContext} คำถาม: "${userMessage}"`;
         try {
             const aiResponse = await callGeminiAPI(fullPrompt);
             thinkingBubble.remove();
@@ -3323,13 +3188,10 @@ document.addEventListener('DOMContentLoaded', () => {
             card.className = 'bg-white p-6 rounded-2xl shadow-lg cursor-pointer hover:shadow-xl transition-shadow';
             card.innerHTML = `
                 <div class="flex items-center space-x-4">
-                    <img src="${profilePic}" alt="Profile" class="w-16 h-16 rounded-full object-cover shadow-md">
+                    <img src="${profilePic}" alt="Profile" class="w-16 h-16 rounded-full object-cover">
                     <div>
                         <h3 class="text-xl font-bold text-gray-800">${user.firstName} ${user.lastName}</h3>
-                        <p class="text-lg font-bold">
-                            <span class="text-amber-500">คะแนนรวม: ${totalStars} ★</span>
-                            ${blackStarsCount > 0 ? `<span class="text-red-500 ml-2">(หัก ${blackStarsCount} ★)</span>` : ''}
-                        </p>
+                        <p class="text-sm text-gray-500">${user.role || 'Officer'}</p>
                     </div>
                 </div>
                 <div class="mt-4 flex justify-between items-center">
@@ -3486,6 +3348,7 @@ document.addEventListener('DOMContentLoaded', () => {
         container.dataset.userId = user.id;
         const userScores = allScores.filter(s => s.userId === user.id).sort((a, b) => getMillis(b.timestamp) - getMillis(a.timestamp));
         const totalStars = userScores.reduce((sum, score) => sum + (score.score || 0), 0);
+        const blackStarsCount = userScores.filter(s => s.score < 0).reduce((sum, s) => sum + Math.abs(s.score), 0);
         const profilePic = user.profilePictureUrl || 'https://placehold.co/128x128/e0e0e0/757575?text=?';
         const allUserTransfers = [...allTransfersData, ...completedTransfersData];
         const createdCount = allUserTransfers.filter(t => t.createdByUid === user.id).length;
@@ -3731,6 +3594,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 awardedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
                 timestamp: serverTimestamp()
             });
+            
+            // Update local user data
+            const userIndex = allUsers.findIndex(u => u.id === userId);
+            if (userIndex !== -1) {
+                allUsers[userIndex].smallStars = smallStars;
+                allUsers[userIndex].bigStars = bigStars;
+            }
             
             showNotification('บันทึกคะแนนดาวสำเร็จ!');
             starPointsModal.classList.add('hidden');
@@ -4119,7 +3989,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification("กรุณาเลือกไฟล์ Backup ก่อน", false);
             return;
         }
-        showConfirmationModal("การกู้คืนข้อมูลจะเขียนทับข้อมูลที่มีอยู่ทั้งหมด คุณแน่ใจหรือไม่ว่าต้องการดำเนินการต่อ?", () => {
+        showConfirmationModal("การกู้คืนข้อมูลจะเขียนทับข้อมูลที่มีอยู่ทั้งหมด คุณแน่ใจหรือไม่?", () => {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
