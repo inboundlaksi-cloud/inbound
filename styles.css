@@ -194,6 +194,16 @@ body {
     background-color: #ef4444;
     transform: scale(1.05);
 }
+/* สไตล์สำหรับปุ่มยกเลิกการเช็ค */
+.cancel-pallet-check-button {
+    margin-left: 8px;
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+.cancel-pallet-check-button:hover {
+    background-color: #fecaca;
+    color: #991b1b;
+}
 .achievement-badge {
     display: inline-flex;
     align-items: center;
@@ -261,6 +271,17 @@ tr:hover {
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+#quick-form-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+    border-left: 4px solid #3b82f6;
+}
+#quick-form-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
+}
+#quick-form-card:active {
+    transform: translateY(-2px);
 }
 /* KPI Issue Indicator */
 .kpi-issue-indicator {
@@ -543,7 +564,6 @@ tr:hover {
     margin: 0 0.5rem;
     color: #9ca3af;
 }
-
 /* ในไฟล์ CSS - เพิ่มส่วนนี้ */
 .cursor-not-allowed {
     cursor: not-allowed !important;
@@ -551,7 +571,6 @@ tr:hover {
 .opacity-50 {
     opacity: 0.5 !important;
 }
-
 /* สำหรับแสดงสถานะของผู้ใช้ */
 .user-role-badge {
     display: inline-block;
