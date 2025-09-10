@@ -18,6 +18,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
+
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     const payload = {
@@ -80,6 +81,7 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
+
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -504,6 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
+    // แก้ไขฟังก์ชัน updateMainMenuSummary ให้แสดงรายการมีปัญหาเฉพาะภายในวันนั้นๆ
     function updateMainMenuSummary() {
         const todayString = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
         const pendingCount = allTransfersData.filter(t => !t.scheduledDate).length;
@@ -1104,6 +1107,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     showNotification(`บันทึกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
                 }
+                
+                // อัพเดทหน้าจอหลังจากการดำเนินการเสร็จสิ้น
+                updateMainMenuSummary();
+                if (views.checkProduct && views.checkProduct.style.display === 'block') {
+                    renderCheckProductView();
+                }
+                if (views.transfers && views.transfers.style.display === 'block') {
+                    if (completedView.style.display === 'block') {
+                        renderCompletedView();
+                    }
+                }
             } catch (error) {
                 console.error("Error updating pallet check status: ", error);
                 showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
@@ -1149,6 +1163,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isAllReceived) {
                 showNotification('รับสินค้าครบถ้วนแล้ว!');
             }
+            
+            // อัพเดทหน้าจอหลังจากการดำเนินการเสร็จสิ้น
+            updateMainMenuSummary();
+            if (views.checkProduct && views.checkProduct.style.display === 'block') {
+                renderCheckProductView();
+            }
+            if (views.transfers && views.transfers.style.display === 'block') {
+                if (completedView.style.display === 'block') {
+                    renderCompletedView();
+                }
+            }
         } catch (error) {
             console.error("Error updating pallet receive status: ", error);
             showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
@@ -1187,6 +1212,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             showNotification('รับสินค้าครบถ้วนแล้ว!');
+            
+            // อัพเดทหน้าจอหลังจากการดำเนินการเสร็จสิ้น
+            updateMainMenuSummary();
+            if (views.checkProduct && views.checkProduct.style.display === 'block') {
+                renderCheckProductView();
+            }
+            if (views.transfers && views.transfers.style.display === 'block') {
+                if (completedView.style.display === 'block') {
+                    renderCompletedView();
+                }
+            }
         } catch (error) {
             console.error("Error updating receive status: ", error);
             showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
@@ -1254,6 +1290,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 
                 showNotification("ลบรายการสำเร็จ");
+                
+                // อัพเดทหน้าจอหลังจากการดำเนินการเสร็จสิ้น
+                updateMainMenuSummary();
+                if (views.checkProduct && views.checkProduct.style.display === 'block') {
+                    renderCheckProductView();
+                }
+                if (views.transfers && views.transfers.style.display === 'block') {
+                    if (detailsView.style.display === 'block') {
+                        renderDetailsTable();
+                    }
+                    if (completedView.style.display === 'block') {
+                        renderCompletedView();
+                    }
+                    if (issuesView.style.display === 'block') {
+                        renderIssuesView();
+                    }
+                }
             } catch (error) {
                 console.error("Error deleting transfer:", error);
                 showNotification("เกิดข้อผิดพลาดในการลบ", false);
@@ -1273,6 +1326,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 
                 showNotification("ลบปัญหาสำเร็จ");
+                
+                // อัพเดทหน้าจอหลังจากการดำเนินการเสร็จสิ้น
+                updateMainMenuSummary();
+                if (views.transfers && views.transfers.style.display === 'block') {
+                    if (issuesView.style.display === 'block') {
+                        renderIssuesView();
+                    }
+                }
             } catch (error) {
                 console.error("Error deleting issue:", error);
                 showNotification("เกิดข้อผิดพลาดในการลบ", false);
@@ -1888,6 +1949,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 showNotification(`บันทึกปัญหาสำหรับ TFOR ...${currentTforData.tforNumber} เรียบร้อยแล้ว!`);
                 formWrapper.remove();
                 document.querySelectorAll('.issue-pallet-button').forEach(btn => btn.classList.remove('active'));
+                
+                // อัพเดทหน้าจอหลังจากการดำเนินการเสร็จสิ้น
+                updateMainMenuSummary();
+                if (views.checkProduct && views.checkProduct.style.display === 'block') {
+                    renderCheckProductView();
+                }
+                if (views.transfers && views.transfers.style.display === 'block') {
+                    if (issuesView.style.display === 'block') {
+                        renderIssuesView();
+                    }
+                }
             } catch (error) {
                 console.error("Error saving issue: ", error);
                 showNotification('เกิดข้อผิดพลาดในการบันทึกปัญหา', false);
@@ -1895,29 +1967,129 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    function renderCompletedView(filter = '') {
+    // แก้ไขฟังก์ชัน renderCompletedView เพื่อเพิ่มตัวกรองและการเรียงลำดับตามวันที่
+    function renderCompletedView(filter = '', sortBy = 'date-desc') {
         const container = document.getElementById('completed-container');
-        const filteredData = completedTransfersData.filter(d => d.isCompleted && d.isReceived);
+        // เพิ่มตัวกรองและการเรียงลำดับ
+        const filterContainer = document.createElement('div');
+        filterContainer.className = 'mb-6 flex flex-col md:flex-row gap-4';
+        filterContainer.innerHTML = `
+            <div class="flex-grow">
+                <input type="search" id="completed-search" placeholder="ค้นหา TFOR, ทะเบียนรถ, สาขา..." class="w-full p-2 border rounded-lg">
+            </div>
+            <div class="flex gap-2">
+                <select id="completed-sort" class="p-2 border rounded-lg">
+                    <option value="date-desc">เรียงตามวันที่ (ล่าสุดก่อน)</option>
+                    <option value="date-asc">เรียงตามวันที่ (เก่าสุดก่อน)</option>
+                    <option value="tfor-asc">เรียงตาม TFOR (น้อยไปมาก)</option>
+                    <option value="branch-asc">เรียงตามสาขา (ก-ฮ)</option>
+                </select>
+                <select id="completed-filter" class="p-2 border rounded-lg">
+                    <option value="all">ทั้งหมด</option>
+                    <option value="today">วันนี้</option>
+                    <option value="this-week">สัปดาห์นี้</option>
+                    <option value="this-month">เดือนนี้</option>
+                </select>
+            </div>
+        `;
+        
+        // ตรวจสอบว่ามี filter container อยู่แล้วหรือไม่
+        const existingFilter = container.previousElementSibling;
+        if (!existingFilter || !existingFilter.classList.contains('completed-filter-container')) {
+            const filterWrapper = document.createElement('div');
+            filterWrapper.className = 'completed-filter-container mb-6';
+            filterWrapper.appendChild(filterContainer);
+            container.parentNode.insertBefore(filterWrapper, container);
+        } else {
+            existingFilter.innerHTML = '';
+            existingFilter.appendChild(filterContainer);
+        }
+        
+        let filteredData = completedTransfersData.filter(d => d.isCompleted && d.isReceived);
+        
+        // ใช้ filter จาก input
         if (filter) {
+            const lowerCaseFilter = filter.toLowerCase();
             filteredData = filteredData.filter(d => 
                 (d.tforNumber || '').includes(filter) || 
                 (d.licensePlate || '').toLowerCase().includes(filter.toLowerCase()) ||
                 (d.branch || '').toLowerCase().includes(filter.toLowerCase())
             );
         }
+        
+        // ใช้ filter จาก dropdown
+        const filterType = document.getElementById('completed-filter')?.value || 'all';
+        if (filterType !== 'all') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (filterType === 'today') {
+                filteredData = filteredData.filter(d => {
+                    const completionDate = parseThaiDate(d.completionDate);
+                    return completionDate && completionDate.toDateString() === today.toDateString();
+                });
+            } else if (filterType === 'this-week') {
+                const startOfWeek = new Date(today);
+                startOfWeek.setDate(today.getDate() - today.getDay());
+                
+                filteredData = filteredData.filter(d => {
+                    const completionDate = parseThaiDate(d.completionDate);
+                    return completionDate && completionDate >= startOfWeek;
+                });
+            } else if (filterType === 'this-month') {
+                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                
+                filteredData = filteredData.filter(d => {
+                    const completionDate = parseThaiDate(d.completionDate);
+                    return completionDate && completionDate >= startOfMonth;
+                });
+            }
+        }
+        
+        // เรียงลำดับข้อมูล
+        if (sortBy === 'date-desc') {
+            filteredData.sort((a, b) => {
+                const dateA = parseThaiDate(a.completionDate) || new Date(0);
+                const dateB = parseThaiDate(b.completionDate) || new Date(0);
+                return dateB - dateA;
+            });
+        } else if (sortBy === 'date-asc') {
+            filteredData.sort((a, b) => {
+                const dateA = parseThaiDate(a.completionDate) || new Date(0);
+                const dateB = parseThaiDate(b.completionDate) || new Date(0);
+                return dateA - dateB;
+            });
+        } else if (sortBy === 'tfor-asc') {
+            filteredData.sort((a, b) => (a.tforNumber || '').localeCompare(b.tforNumber || ''));
+        } else if (sortBy === 'branch-asc') {
+            filteredData.sort((a, b) => (a.branch || '').localeCompare(b.branch || ''));
+        }
+        
         container.innerHTML = filteredData.length === 0 ? `<p class="text-gray-500 text-center">ไม่พบข้อมูลที่เช็คเสร็จแล้ว</p>` : '';
+        
         filteredData.forEach(data => {
             const card = document.createElement('div');
             card.className = 'bg-white p-6 rounded-2xl shadow-md border border-gray-200';
+            
             const imagesHTML = (data.images && data.images.length > 0) 
                 ? `<div class="mt-4 grid grid-cols-3 gap-2">${data.images.slice(0,3).map(img => `<img src="${img}" class="h-24 w-full object-cover rounded-md cursor-pointer" onclick="document.getElementById('details-modal').dispatchEvent(new CustomEvent('showDetails', { detail: { item: JSON.parse(this.dataset.item) } }))" data-item='${JSON.stringify(data)}'>`).join('')}</div>`
                 : '<p class="text-sm text-gray-400 mt-4">ไม่มีรูปภาพ</p>';
+                
+            // แสดง TFOR พ่วง
+            const linkedTforsHtml = data.linkedTfors && data.linkedTfors.length > 0 
+                ? `<div class="mt-2"><span class="text-sm font-medium text-gray-600">TFOR พ่วง:</span> ${data.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')}</div>`
+                : '';
+            
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-sm text-gray-500">วันที่เช็คเสร็จ</p>
-                        <p class="font-semibold">${data.completionDate}</p>
-                        <p class="text-sm text-gray-500 mt-2">วันที่รับสินค้า</p>
+                        <div class="flex items-center mb-2">
+                            <p class="text-sm text-gray-500">วันที่เช็คเสร็จ</p>
+                            <span class="ml-2 text-xs font-medium px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                                ${data.completionDate || '-'}
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-500">วันที่รับสินค้า</p>
                         <p class="font-semibold">${data.receivedDate || '-'}</p>
                     </div>
                     <div class="delete-permission"></div>
@@ -1930,6 +2102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div><p class="text-sm text-gray-500">ผู้เช็คคนล่าสุด</p><p class="font-semibold">${data.lastCheckedByName || 'N/A'}</p></div>
                     <div class="md:col-span-2"><p class="text-sm text-gray-500">หมายเหตุพาเลท</p><p class="font-semibold">${data.palletNotes || '-'}</p></div>
                 </div>
+                ${linkedTforsHtml}
                 ${imagesHTML}
             `;
             
@@ -1942,13 +2115,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
             container.appendChild(card);
         });
+        
         updateUIForRoles();
+        
+        // เพิ่ม event listeners สำหรับ filter และ sort
+        document.getElementById('completed-search')?.addEventListener('input', (e) => {
+            renderCompletedView(e.target.value, document.getElementById('completed-sort')?.value || 'date-desc');
+        });
+        
+        document.getElementById('completed-sort')?.addEventListener('change', (e) => {
+            renderCompletedView(document.getElementById('completed-search')?.value || '', e.target.value);
+        });
+        
+        document.getElementById('completed-filter')?.addEventListener('change', (e) => {
+            renderCompletedView(document.getElementById('completed-search')?.value || '', document.getElementById('completed-sort')?.value || 'date-desc');
+        });
     }
     
-    detailsModal.addEventListener('showDetails', (e) => showDetailsModal(e.detail.item));
-    
-    document.getElementById('completed-search').addEventListener('input', (e) => renderCompletedView(e.target.value));
-    
+    // แก้ไขฟังก์ชัน renderIssuesView ให้แสดงรายการมีปัญหาทั้งหมด (ไม่กรองเฉพาะวันนี้)
     function renderIssuesView() {
         const container = document.getElementById('issues-container');
         container.innerHTML = '';
@@ -2582,7 +2766,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (todaysTransfers.length === 0) {
             container.innerHTML = `
                 <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
-                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
                     <h3 class="text-xl font-bold text-gray-700 mb-2">ไม่มีงานวางแผนสำหรับวันนี้</h3>
