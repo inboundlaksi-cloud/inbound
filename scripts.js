@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 // Firestore Database
-import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 // Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAJRXZqHsSKT6ea1bVM9ctycAlg0cqeT50",
@@ -18,6 +18,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 // Your Gemini API Key - Updated with the provided key
 const geminiApiKey = "AIzaSyAVxhKKuLVWKQzAh9XTNITsQ4LF3_TlNzg";
+
 async function callGeminiAPI(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
     const payload = {
@@ -80,6 +81,7 @@ async function callGeminiAPI(prompt) {
         throw error;
     }
 }
+
 document.addEventListener('DOMContentLoaded', () => {
     // Hide loading container when page is fully loaded
     const loadingContainer = document.getElementById('loading-container');
@@ -97,9 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         todaysPlan: document.getElementById('todays-plan-view'),
         kpi: document.getElementById('kpi-view'),
         profile: document.getElementById('profile-view'),
-        checkProduct: document.getElementById('check-product-view'),
-        settings: document.getElementById('settings-view'),
-        logs: document.getElementById('logs-view')
+        checkProduct: document.getElementById('check-product-view')
     };
     
     const loginForm = document.getElementById('login-form');
@@ -495,26 +495,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('profile-button').addEventListener('click', () => {
         renderProfileView();
         showMainView(views.profile);
-    });
-    
-    // เพิ่มฟังก์ชันสำหรับหน้าตั้งค่า
-    document.getElementById('go-to-settings').addEventListener('click', () => {
-        if (currentUserProfile && currentUserProfile.role === 'Admin') {
-            renderSettingsView();
-            showMainView(views.settings);
-        } else {
-            showNotification('คุณไม่มีสิทธิ์เข้าถึงหน้านี้', false);
-        }
-    });
-    
-    // เพิ่มฟังก์ชันสำหรับหน้าประวัติการใช้งาน
-    document.getElementById('go-to-logs').addEventListener('click', () => {
-        if (currentUserProfile && currentUserProfile.role === 'Admin') {
-            renderLogsView();
-            showMainView(views.logs);
-        } else {
-            showNotification('คุณไม่มีสิทธิ์เข้าถึงหน้านี้', false);
-        }
     });
     
     document.querySelectorAll('.toggle-password').forEach(el => {
@@ -4254,213 +4234,4 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error logging action:", error);
         }
     }
-    
-    // ฟังก์ชันแสดงหน้าตั้งค่า
-    function renderSettingsView() {
-        // ดึงค่าตั้งค่าปัจจุบันจาก Firestore
-        const settingsDocRef = doc(db, "settings", "app");
-        getDoc(settingsDocRef).then(doc => {
-            if (doc.exists()) {
-                const settings = doc.data();
-                document.getElementById('gemini-api-key').value = settings.geminiApiKey || '';
-                
-                // ตั้งค่าธีม
-                if (settings.theme) {
-                    document.querySelector(`input[name="theme"][value="${settings.theme}"]`).checked = true;
-                }
-                
-                // ตั้งค่าการแจ้งเตือน
-                if (settings.notifications) {
-                    document.getElementById('notify-new-transfer').checked = settings.notifications.newTransfer || false;
-                    document.getElementById('notify-issue').checked = settings.notifications.issue || false;
-                    document.getElementById('notify-completion').checked = settings.notifications.completion || false;
-                }
-            }
-        }).catch(error => {
-            console.error("Error fetching settings:", error);
-        });
-    }
-    
-    // ฟังก์ชันบันทึกการตั้งค่า
-    document.getElementById('settings-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const apiKey = document.getElementById('gemini-api-key').value;
-        const theme = document.querySelector('input[name="theme"]:checked')?.value;
-        const notifications = {
-            newTransfer: document.getElementById('notify-new-transfer').checked,
-            issue: document.getElementById('notify-issue').checked,
-            completion: document.getElementById('notify-completion').checked,
-        };
-        
-        try {
-            // บันทึกการตั้งค่าลง Firestore
-            await setDoc(doc(db, "settings", "app"), {
-                geminiApiKey: apiKey,
-                theme: theme,
-                notifications: notifications,
-                updatedAt: serverTimestamp(),
-            });
-            
-            // อัปเดต API Key ในระบบ
-            if (apiKey) {
-                geminiApiKey = apiKey;
-            }
-            
-            // ใช้ธีมที่เลือก
-            if (theme) {
-                document.body.className = theme === 'dark' ? 'dark-theme' : '';
-                if (theme === 'blue') {
-                    document.body.className = 'blue-theme';
-                }
-            }
-            
-            showNotification("บันทึกการตั้งค่าสำเร็จ");
-            
-            // บันทึกประวัติการเปลี่ยนแปลง
-            logAction('แก้ไขการตั้งค่าระบบ', {
-                theme: theme,
-                notifications: notifications
-            });
-        } catch (error) {
-            console.error("Error saving settings:", error);
-            showNotification("เกิดข้อผิดพลาดในการบันทึกการตั้งค่า", false);
-        }
-    });
-    
-    // ฟังก์ชันแสดงประวัติการใช้งาน
-    function renderLogsView() {
-        const tableBody = document.getElementById('logs-table-body');
-        tableBody.innerHTML = '';
-        
-        // ดึงข้อมูลประวัติจาก Firestore
-        const logsQuery = query(collection(db, "logs"), orderBy("timestamp", "desc"));
-        getDocs(logsQuery).then(snapshot => {
-            if (snapshot.empty) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">ไม่มีข้อมูลประวัติการใช้งาน</td></tr>';
-                return;
-            }
-            
-            snapshot.forEach(doc => {
-                const log = doc.data();
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">${formatTimestamp(log.timestamp)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${log.userName}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${log.action}</td>
-                    <td class="px-6 py-4">${JSON.stringify(log.details)}</td>
-                `;
-                tableBody.appendChild(row);
-            });
-        }).catch(error => {
-            console.error("Error fetching logs:", error);
-            showNotification("เกิดข้อผิดพลาดในการดึงข้อมูลประวัติ", false);
-        });
-    }
-    
-    // ฟังก์ชันจัดรูปแบบวันที่เวลา
-    function formatTimestamp(timestamp) {
-        if (!timestamp) return '-';
-        const date = timestamp.toDate();
-        return date.toLocaleString('th-TH');
-    }
-    
-    // เพิ่มการตรวจสอบสิทธิ์สำหรับหน้าตั้งค่าและประวัติ
-    function updateUIForRoles() {
-        if (!currentUserProfile) return;
-        const role = currentUserProfile.role || 'Officer';
-        
-        // กำหนดสิทธิ์สำหรับแต่ละระดับ
-        const roles = {
-            'Admin': [
-                'admin-only', 
-                'viewer-only', 
-                'supervisor-only', 
-                'senior-only', 
-                'delete-permission', 
-                'canViewKpi', 
-                'canManageUsers', 
-                'canManageSystem', 
-                'canPlanWork', 
-                'canComment',
-                'canEdit'
-            ],
-            'Viewer': [
-                'viewer-only', 
-                'supervisor-only', 
-                'senior-only', 
-                'canViewKpi', 
-                'canPlanWork', 
-                'canComment'
-            ],
-            'Supervisor': [
-                'supervisor-only', 
-                'senior-only', 
-                'delete-permission', 
-                'canViewKpi', 
-                'canManageUsers', 
-                'canPlanWork', 
-                'canComment',
-                'canEdit'
-            ],
-            'Senior': [
-                'senior-only', 
-                'canPlanWork', 
-                'canComment',
-                'canEdit'
-            ],
-            'Officer': [
-                'canComment'
-            ]
-        };
-        
-        // ซ่อนทุกองค์ประกอบที่มี data-permission ก่อน
-        document.querySelectorAll('[data-permission]').forEach(el => el.style.display = 'none');
-        
-        // แสดงองค์ประกอบตามสิทธิ์ของผู้ใช้
-        if (roles[role]) {
-            roles[role].forEach(permission => {
-                document.querySelectorAll(`[data-permission="${permission}"]`).forEach(el => {
-                    el.style.display = 'block';
-                });
-            });
-        }
-        
-        // สำหรับ Viewer ให้ปิดการใช้งานปุ่มแก้ไขทั้งหมด
-        if (role === 'Viewer') {
-            document.querySelectorAll('.edit-button, .delete-permission, input, select, textarea, button[type="submit"]').forEach(el => {
-                el.disabled = true;
-                el.classList.add('opacity-50', 'cursor-not-allowed');
-            });
-        }
-        
-        // สำหรับ Officer ให้ซ่อนปุ่มลบและปุ่มแก้ไขบางปุ่ม
-        if (role === 'Officer') {
-            document.querySelectorAll('.delete-permission').forEach(el => el.style.display = 'none');
-        }
-    }
-    
-    // เพิ่มฟังก์ชันค้นหาและกรองในหน้าประวัติ
-    document.getElementById('logs-search')?.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#logs-table-body tr');
-        
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
-    });
-    document.getElementById('logs-filter')?.addEventListener('change', (e) => {
-        const filterValue = e.target.value;
-        const rows = document.querySelectorAll('#logs-table-body tr');
-        
-        rows.forEach(row => {
-            if (filterValue === 'all') {
-                row.style.display = '';
-            } else {
-                const action = row.cells[2].textContent.toLowerCase();
-                row.style.display = action.includes(filterValue) ? '' : 'none';
-            }
-        });
-    });
 });  // End of DOMContentLoaded
