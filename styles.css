@@ -1,3 +1,55 @@
+/* ธีม Dark */
+body.dark-theme {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #4a5568 100%);
+    color: #e2e8f0;
+}
+body.dark-theme .bg-white {
+    background-color: #2d3748;
+}
+body.dark-theme .text-gray-800 {
+    color: #e2e8f0;
+}
+body.dark-theme .card {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+body.dark-theme .modal-content {
+    background-color: #2d3748;
+    color: #e2e8f0;
+}
+/* ธีม Blue */
+body.blue-theme {
+    background: linear-gradient(135deg, #ebf8ff 0%, #bee3f8 50%, #90cdf4 100%);
+}
+body.blue-theme .bg-white {
+    background-color: #ebf8ff;
+}
+body.blue-theme .card {
+    background-color: #ebf8ff;
+    border-color: #90cdf4;
+}
+body.blue-theme .modal-content {
+    background-color: #ebf8ff;
+}
+/* สไตล์สำหรับหน้าตั้งค่า */
+.theme-option input:checked + label {
+    border-color: #a21caf;
+    box-shadow: 0 0 0 2px rgba(162, 28, 175, 0.2);
+}
+.theme-preview {
+    transition: all 0.3s ease;
+}
+.theme-option:hover .theme-preview {
+    transform: scale(1.05);
+}
+/* สไตล์สำหรับตารางประวัติ */
+#logs-table-body tr:hover {
+    background-color: #f9fafb;
+}
+body.dark-theme #logs-table-body tr:hover {
+    background-color: #4a5568;
+}
+
 body {
     font-family: 'Sarabun', 'Inter', sans-serif;
     background: linear-gradient(135deg, #f0f9ff 0%, #cbebff 50%, #d8e6ff 100%);
