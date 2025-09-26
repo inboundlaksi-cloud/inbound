@@ -1009,104 +1009,188 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handlePalletCheck(palletNum, buttonElement) {
         const isCurrentlyChecked = currentTforData.checkedPallets?.includes(palletNum);
         
-        // แสดง popup เลือกพนักงาน
-        showEmployeeSelectionModal(palletNum, async (selectedEmployeeIds) => {
-            if (buttonElement) {
-                buttonElement.classList.toggle('bg-green-500', !isCurrentlyChecked);
-                buttonElement.classList.toggle('text-white', !isCurrentlyChecked);
-                buttonElement.classList.toggle('bg-gray-200', isCurrentlyChecked);
-            }
-            
-            const checkedPallets = [...(currentTforData.checkedPallets || [])];
-            const index = checkedPallets.indexOf(palletNum);
-            if (index > -1) checkedPallets.splice(index, 1);
-            else checkedPallets.push(palletNum);
-            currentTforData.checkedPallets = checkedPallets; 
-            const transferDocRef = doc(db, "transfers", currentTforData.id);
-            const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
-            
-            // อัปเดตข้อมูลการเช็ค
-            try {
-                await updateDoc(transferDocRef, {
-                    isCompleted: isNowCompleted,
-                    completionDate: isNowCompleted ? new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
-                    checkedPallets: checkedPallets,
-                    lastCheckedByUid: currentUser.uid,
-                    lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    checkLog: (currentTforData.checkLog || []).concat(
-                        selectedEmployeeIds.map(empId => {
-                            const employee = allUsers.find(u => u.id === empId);
-                            return {
-                                pallet: palletNum,
-                                user: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
-                                userId: empId,
-                                timestamp: new Date().toISOString()
-                            };
-                        })
-                    )
-                });
+        // ถ้ายังไม่ได้เช็ค ให้ทำการเช็คตามปกติ
+        if (!isCurrentlyChecked) {
+            // แสดง popup เลือกพนักงาน
+            showEmployeeSelectionModal(palletNum, async (selectedEmployeeIds) => {
+                if (buttonElement) {
+                    buttonElement.classList.toggle('bg-green-500', !isCurrentlyChecked);
+                    buttonElement.classList.toggle('text-white', !isCurrentlyChecked);
+                    buttonElement.classList.toggle('bg-gray-200', isCurrentlyChecked);
+                }
                 
-                // ให้คะแนนแก่พนักงานทุกคนที่เข้าร่วมตรวจสอบ
-                for (const empId of selectedEmployeeIds) {
-                    // ไม่ให้คะแนนซ้ำถ้าพนักงานคนนี้เช็คพาเลทนี้ไปแล้ว
-                    const alreadyChecked = currentTforData.checkLog?.some(
-                        log => log.pallet === palletNum && log.userId === empId
-                    );
+                const checkedPallets = [...(currentTforData.checkedPallets || [])];
+                const index = checkedPallets.indexOf(palletNum);
+                if (index > -1) checkedPallets.splice(index, 1);
+                else checkedPallets.push(palletNum);
+                currentTforData.checkedPallets = checkedPallets; 
+                const transferDocRef = doc(db, "transfers", currentTforData.id);
+                const isNowCompleted = checkedPallets.length === currentTforData.palletNumbers.length;
+                
+                // อัปเดตข้อมูลการเช็ค
+                try {
+                    await updateDoc(transferDocRef, {
+                        isCompleted: isNowCompleted,
+                        completionDate: isNowCompleted ? new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
+                        checkedPallets: checkedPallets,
+                        lastCheckedByUid: currentUser.uid,
+                        lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                        checkLog: (currentTforData.checkLog || []).concat(
+                            selectedEmployeeIds.map(empId => {
+                                const employee = allUsers.find(u => u.id === empId);
+                                return {
+                                    pallet: palletNum,
+                                    user: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+                                    userId: empId,
+                                    timestamp: new Date().toISOString()
+                                };
+                            })
+                        )
+                    });
                     
-                    if (!alreadyChecked || isCurrentlyChecked) {
-                        await addDoc(collection(db, "scores"), {
-                            userId: empId,
-                            score: 1, // 1 คะแนนต่อการเช็ค 1 พาเลท
-                            reason: 'เช็คสินค้า',
-                            notes: `เช็คพาเลทที่ ${palletNum} ของ TFOR ...${currentTforData.tforNumber}`,
-                            awardedByUid: currentUser.uid,
-                            awardedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                            timestamp: serverTimestamp()
-                        });
+                    // ให้คะแนนแก่พนักงานทุกคนที่เข้าร่วมตรวจสอบ
+                    for (const empId of selectedEmployeeIds) {
+                        // ไม่ให้คะแนนซ้ำถ้าพนักงานคนนี้เช็คพาเลทนี้ไปแล้ว
+                        const alreadyChecked = currentTforData.checkLog?.some(
+                            log => log.pallet === palletNum && log.userId === empId
+                        );
                         
-                        // อัปเดตคะแนนดาวของพนักงาน
-                        const user = allUsers.find(u => u.id === empId);
-                        if (user) {
-                            const newSmallStars = (user.smallStars || 0) + 1;
-                            const newBigStars = user.bigStars || 0;
-                            
-                            // ตรวจสอบว่าควรได้ดาวใหญ่หรือไม่ (เก็บดาวเล็กครบ 10 ดวง)
-                            let finalSmallStars = newSmallStars;
-                            let finalBigStars = newBigStars;
-                            
-                            if (newSmallStars >= 10) {
-                                finalBigStars = newBigStars + Math.floor(newSmallStars / 10);
-                                finalSmallStars = newSmallStars % 10;
-                            }
-                            
-                            await updateDoc(doc(db, "users", empId), {
-                                smallStars: finalSmallStars,
-                                bigStars: finalBigStars
+                        if (!alreadyChecked || isCurrentlyChecked) {
+                            await addDoc(collection(db, "scores"), {
+                                userId: empId,
+                                score: 1, // 1 คะแนนต่อการเช็ค 1 พาเลท
+                                reason: 'เช็คสินค้า',
+                                notes: `เช็คพาเลทที่ ${palletNum} ของ TFOR ...${currentTforData.tforNumber}`,
+                                awardedByUid: currentUser.uid,
+                                awardedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                                timestamp: serverTimestamp()
                             });
                             
-                            // อัปเดตข้อมูลในหน่วยความจำ
-                            user.smallStars = finalSmallStars;
-                            user.bigStars = finalBigStars;
+                            // อัปเดตคะแนนดาวของพนักงาน
+                            const user = allUsers.find(u => u.id === empId);
+                            if (user) {
+                                const newSmallStars = (user.smallStars || 0) + 1;
+                                const newBigStars = user.bigStars || 0;
+                                
+                                // ตรวจสอบว่าควรได้ดาวใหญ่หรือไม่ (เก็บดาวเล็กครบ 10 ดวง)
+                                let finalSmallStars = newSmallStars;
+                                let finalBigStars = newBigStars;
+                                
+                                if (newSmallStars >= 10) {
+                                    finalBigStars = newBigStars + Math.floor(newSmallStars / 10);
+                                    finalSmallStars = newSmallStars % 10;
+                                }
+                                
+                                await updateDoc(doc(db, "users", empId), {
+                                    smallStars: finalSmallStars,
+                                    bigStars: finalBigStars
+                                });
+                                
+                                // อัปเดตข้อมูลในหน่วยความจำ
+                                user.smallStars = finalSmallStars;
+                                user.bigStars = finalBigStars;
+                            }
                         }
                     }
+                    
+                    // Log the action
+                    await logAction('เช็คพาเลท', {
+                        transferId: currentTforData.id,
+                        palletNumber: palletNum,
+                        user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
+                        employees: selectedEmployeeIds.map(id => {
+                            const emp = allUsers.find(u => u.id === id);
+                            return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
+                        }).join(', ')
+                    });
+                    
+                    if (isNowCompleted) {
+                        showNotification('เช็คสินค้าครบถ้วนแล้ว!');
+                    } else {
+                        showNotification(`บันทึกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
+                    }
+                    
+                    // อัพเดทหน้าจอหลังจากการดำเนินการเสร็จสิ้น
+                    updateMainMenuSummary();
+                    if (views.checkProduct && views.checkProduct.style.display === 'block') {
+                        renderCheckProductView();
+                    }
+                    if (views.transfers && views.transfers.style.display === 'block') {
+                        if (completedView.style.display === 'block') {
+                            renderCompletedView();
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error updating pallet check status: ", error);
+                    showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
+                }
+            });
+        } else {
+            // ถ้าเช็คแล้ว ให้แสดงหน้าต่างยืนยันการยกเลิก
+            showCancelPalletCheckConfirmation(palletNum, buttonElement);
+        }
+    }
+    
+    // NEW FUNCTION: แสดงหน้าต่างยืนยันการยกเลิกการเช็คพาเลท
+    function showCancelPalletCheckConfirmation(palletNum, buttonElement) {
+        // สร้าง modal element
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+                <h3 class="text-lg font-semibold mb-4">ยืนยันการยกเลิกการเช็ค</h3>
+                <p class="text-gray-600 mb-6">คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการเช็คพาเลทที่ ${palletNum}?</p>
+                <div class="flex justify-center gap-4">
+                    <button id="cancel-pallet-check-btn" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">ยกเลิก</button>
+                    <button id="confirm-cancel-pallet-check-btn" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">ยืนยัน</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // จัดการการกดปุ่มยกเลิก
+        modal.querySelector('#cancel-pallet-check-btn').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        // จัดการการกดปุ่มยืนยัน
+        modal.querySelector('#confirm-cancel-pallet-check-btn').addEventListener('click', async () => {
+            document.body.removeChild(modal);
+            
+            try {
+                // อัปเดต UI ก่อน
+                if (buttonElement) {
+                    buttonElement.classList.remove('bg-green-500', 'text-white');
+                    buttonElement.classList.add('bg-gray-200');
                 }
                 
-                // Log the action
-                await logAction('เช็คพาเลท', {
-                    transferId: currentTforData.id,
-                    palletNumber: palletNum,
-                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`,
-                    employees: selectedEmployeeIds.map(id => {
-                        const emp = allUsers.find(u => u.id === id);
-                        return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
-                    }).join(', ')
+                // อัปเดตข้อมูลใน Firestore
+                const checkedPallets = [...(currentTforData.checkedPallets || [])];
+                const index = checkedPallets.indexOf(palletNum);
+                if (index > -1) {
+                    checkedPallets.splice(index, 1);
+                }
+                
+                currentTforData.checkedPallets = checkedPallets;
+                
+                const transferDocRef = doc(db, "transfers", currentTforData.id);
+                await updateDoc(transferDocRef, {
+                    isCompleted: false,
+                    completionDate: null,
+                    checkedPallets: checkedPallets,
+                    lastCheckedByUid: currentUser.uid,
+                    lastCheckedByName: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
                 });
                 
-                if (isNowCompleted) {
-                    showNotification('เช็คสินค้าครบถ้วนแล้ว!');
-                } else {
-                    showNotification(`บันทึกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
-                }
+                // Log the action
+                await logAction('ยกเลิกการเช็คพาเลท', {
+                    transferId: currentTforData.id,
+                    palletNumber: palletNum,
+                    user: `${currentUserProfile.firstName} ${currentUserProfile.lastName}`
+                });
+                
+                showNotification(`ยกเลิกการเช็คพาเลทที่ ${palletNum} สำเร็จ`);
                 
                 // อัพเดทหน้าจอหลังจากการดำเนินการเสร็จสิ้น
                 updateMainMenuSummary();
@@ -1119,8 +1203,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             } catch (error) {
-                console.error("Error updating pallet check status: ", error);
-                showNotification('เกิดข้อผิดพลาดในการอัปเดต', false);
+                console.error("Error canceling pallet check: ", error);
+                showNotification('เกิดข้อผิดพลาดในการยกเลิกการเช็ค', false);
+            }
+        });
+        
+        // ปิด modal เมื่อคลิกนอกกรอบ
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
             }
         });
     }
@@ -1777,6 +1868,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             checkBtn.addEventListener('click', (e) => handlePalletCheck(palletNum, e.currentTarget));
             palletButtonsContainer.appendChild(checkBtn);
+            
+            // เพิ่มปุ่มยกเลิกการเช็ค (แสดงเฉพาะเมื่อมีการเช็คแล้ว)
+            if (currentTforData.checkedPallets?.includes(palletNum)) {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'cancel-pallet-check-button';
+                cancelBtn.textContent = 'ยกเลิก';
+                cancelBtn.dataset.palletNumber = palletNum;
+                cancelBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // หยุดการ propagate ไปยังปุ่มเช็ค
+                    handlePalletCheck(palletNum, checkBtn);
+                });
+                palletButtonsContainer.appendChild(cancelBtn);
+            }
             
             const receiveBtn = document.createElement('button');
             receiveBtn.className = 'pallet-receive-button px-4 py-2 text-sm rounded-full transition-all transform hover:scale-105';
@@ -2614,11 +2718,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderCheckProductView() {
-        // แสดงรายการที่เช็คแล้วแต่ยังไม่ได้รับ (checked but not received)
+        // แสดงรายการที่เช็คแล้วอย่างน้อย 1 พาเลท แต่ยังไม่ได้รับสินค้าทั้งหมด
         const checkedTforContainer = document.getElementById('checked-tfor-container');
         checkedTforContainer.innerHTML = '';
         
-        // หา TFOR ที่เช็คแล้วอย่างน้อย 1 พาเลท แต่ยังไม่ได้รับสินค้า (receivedPallets ว่างหรือไม่ครบ)
+        // หา TFOR ที่เช็คแล้วอย่างน้อย 1 พาเลท แต่ยังไม่ได้รับสินค้าทั้งหมด
+        // แก้ไขตรรกะการตรวจสอบ: ถ้ามีการเช็คแล้ว แต่ยังไม่ได้รับสินค้าครบตามจำนวนที่เช็ค
         const checkedNotReceived = allTransfersData.filter(t => 
             t.checkedPallets && t.checkedPallets.length > 0 && 
             (!t.receivedPallets || t.receivedPallets.length < t.checkedPallets.length)
@@ -2670,6 +2775,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${data.linkedTfors.map(tfor => `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">${tfor}</span>`).join('')}
                     </div>`
                     : '';
+                
+                // สร้างรายการพาเลทที่เช็คแล้วแต่ยังไม่ได้รับ
+                let notReceivedPalletsHtml = '';
+                if (data.checkedPallets && data.receivedPallets) {
+                    const notReceivedPallets = data.checkedPallets.filter(pallet => !data.receivedPallets.includes(pallet));
+                    if (notReceivedPallets.length > 0) {
+                        notReceivedPalletsHtml = `
+                            <div class="mt-3">
+                                <p class="text-sm font-medium text-orange-600">พาเลทที่เช็คแล้วแต่ยังไม่ได้รับ:</p>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    ${notReceivedPallets.map(pallet => `<span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">พาเลทที่ ${pallet}</span>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
                 
                 card.innerHTML = `
                     <div class="p-6">
@@ -2739,6 +2860,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ไปรับสินค้า
                             </button>
                         </div>
+                        
+                        ${notReceivedPalletsHtml}
                     </div>
                 `;
                 
