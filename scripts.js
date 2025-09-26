@@ -1341,9 +1341,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // แก้ไขฟังก์ชัน renderDetailsTable() เพื่อแสดงรายการที่มีการวางแผนงานไว้แล้ว
     function renderDetailsTable(filter = '', sortBy = 'date-desc') {
         const container = document.getElementById('details-table-container');
-        let filteredData = allTransfersData.filter(d => !d.scheduledDate && !d.isReceived);
+        // แก้ไขการกรองข้อมูลให้รวมรายการที่มี scheduledDate ด้วย
+        let filteredData = allTransfersData.filter(d => !d.isReceived);
         if (filter) {
             const lowerCaseFilter = filter.toLowerCase();
             filteredData = filteredData.filter(d => 
@@ -1378,10 +1380,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <tbody class="bg-white divide-y divide-gray-200"></tbody>`;
         const tbody = table.querySelector('tbody');
         filteredData.forEach(data => {
+            // เพิ่มการแสดงสถานะ "วางแผนงานอยู่"
             let statusText = 'ยังไม่เช็ค';
             let statusColor = 'bg-gray-100 text-gray-800';
             
-            if (data.checkedPallets && data.checkedPallets.length > 0 && !data.isReceived) {
+            if (data.scheduledDate) {
+                statusText = 'วางแผนงานอยู่';
+                statusColor = 'bg-purple-100 text-purple-800';
+            } else if (data.checkedPallets && data.checkedPallets.length > 0 && !data.isReceived) {
                 statusText = 'รอรับสินค้า';
                 statusColor = 'bg-blue-100 text-blue-800';
             } else if (data.receivedPallets && data.receivedPallets.length > 0) {
@@ -1625,6 +1631,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // แก้ไขฟังก์ชัน showSchedulingModalForTransfer() เพื่อให้แสดงข้อมูลการวางแผนงานที่มีอยู่แล้ว
     function showSchedulingModalForTransfer(transferData) {
         // แสดง modal สำหรับวางแผนงานของ TFOR ที่เลือก
         const arrivalDate = parseThaiDate(transferData.deliveryDate);
@@ -1639,6 +1646,15 @@ document.addEventListener('DOMContentLoaded', () => {
             ? transferData.linkedTfors.map(tfor => `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">${tfor}</span>`).join('')
             : 'ไม่มี';
         
+        // แสดงข้อมูลการวางแผนงานที่มีอยู่แล้ว (ถ้ามี)
+        const scheduledInfo = transferData.scheduledDate 
+            ? `<div class="mb-4 p-3 bg-purple-50 rounded-lg">
+                 <p class="font-semibold text-purple-800">วางแผนงานไว้แล้ว</p>
+                 <p>วันที่: ${transferData.scheduledDate}</p>
+                 <p>โดย: ${transferData.scheduledByName || 'N/A'}</p>
+               </div>`
+            : '';
+        
         let modalHtml = `
             <button id="close-details-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
             <h3 class="text-lg font-bold mb-3">วางแผนงานสำหรับ TFOR ...${transferData.tforNumber}</h3>
@@ -1651,9 +1667,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>จำนวนพาเลท: ${transferData.palletCount}</p>
                 <p>TFOR พ่วง: ${linkedTforsHtml}</p>
             </div>
+            ${scheduledInfo}
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">เลือกวันที่ต้องการวางแผน</label>
-                <input type="date" id="schedule-date" class="w-full p-2 border rounded-lg" min="${new Date().toISOString().split('T')[0]}">
+                <input type="date" id="schedule-date" class="w-full p-2 border rounded-lg" min="${new Date().toISOString().split('T')[0]}" 
+                       value="${transferData.scheduledDate ? new Date(parseThaiDate(transferData.scheduledDate)).toISOString().split('T')[0] : ''}">
             </div>
             <div class="text-right">
                 <button id="save-schedule-btn" class="px-4 py-2 bg-fuchsia-600 text-white rounded-lg">บันทึกแผนงาน</button>
