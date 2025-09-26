@@ -579,11 +579,15 @@ tr:hover {
     background-color: #fee2e2;
     color: #991b1b;
 }
-/* สไตล์สำหรับปุ่มยกเลิกการเช็ค */
+/* สำหรับปุ่มยกเลิกการเช็ค */
 .cancel-pallet-check-button {
     margin-left: 8px;
     background-color: #fee2e2;
     color: #b91c1c;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
 }
 .cancel-pallet-check-button:hover {
     background-color: #fecaca;
